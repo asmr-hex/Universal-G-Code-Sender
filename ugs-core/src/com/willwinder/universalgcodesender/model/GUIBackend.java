@@ -60,6 +60,7 @@ import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -84,6 +85,8 @@ public class GUIBackend implements BackendAPI {
     private File processedGcodeFile = null;
     private File tempDir = null;
     private String firmware = null;
+
+    private ExpressionEngine expressionEngine = new ExpressionEngine();
 
     /**
      * A temporary pointer to the active gcode stream. This is needed to make sure it is closed
@@ -184,6 +187,8 @@ public class GUIBackend implements BackendAPI {
         controller.getFirmwareSettings().addListener(eventDispatcher);
 
         openCommConnection(port, baudRate);
+
+        expressionEngine.connect(controller, settings);
     }
 
     protected IController fetchControllerFromFirmware(String firmware) throws Exception {
@@ -247,6 +252,9 @@ public class GUIBackend implements BackendAPI {
     @Override
     public void sendGcodeCommand(boolean restoreParserState, String commandText) throws Exception {
         if (this.isConnected()) {
+            // perform in-flight processing for evaluating expressions, resolving all variables
+            commandText = expressionEngine.eval(commandText);
+
             GcodeCommand command = controller.createCommand(commandText);
             command.setTemporaryParserModalChange(restoreParserState);
             sendGcodeCommand(command);
@@ -721,6 +729,9 @@ public class GUIBackend implements BackendAPI {
         controller.setWorkPosition(position);
     }
 
+    // TODO (coco|2023.10.28) refactor this. extract Javascript engine into its own
+    // object in order to persist JavaScript variable binding context.
+    // see http://www.java2s.com/Tutorial/Java/0120__Development/VariablesboundthroughScriptEngine.htm
     @Override
     public void setWorkPositionUsingExpression(final Axis axis, final String expression) throws Exception {
         Units preferredUnits = getSettings().getPreferredUnits();
@@ -742,6 +753,11 @@ public class GUIBackend implements BackendAPI {
         } catch (ScriptException e) {
             throw new Exception("Invalid expression", e);
         }
+    }
+
+    @Override
+    public ExpressionVariables getExpressionVariables() {
+        return this.expressionEngine.getVariables();
     }
 
     ////////////////////////

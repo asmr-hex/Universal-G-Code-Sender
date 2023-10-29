@@ -202,4 +202,11 @@ public interface BackendAPI extends BackendAPIReadOnly {
      * @return a command creator
      */
     ICommandCreator getCommandCreator();
+
+    /**
+     * Returns an object which can read/write variables accessible in gcode JavaScript expressions.
+     *
+     * @return the gcode expression variables store
+     */
+    ExpressionVariables getExpressionVariables();
 }
