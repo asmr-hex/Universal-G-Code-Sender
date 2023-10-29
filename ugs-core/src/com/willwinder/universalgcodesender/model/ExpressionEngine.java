@@ -20,7 +20,6 @@ package com.willwinder.universalgcodesender.model;
 
 import com.willwinder.universalgcodesender.IController;
 import com.willwinder.universalgcodesender.listeners.ControllerStatus;
-import com.willwinder.universalgcodesender.model.Axis;
 import com.willwinder.universalgcodesender.model.UnitUtils.Units;
 import com.willwinder.universalgcodesender.utils.Settings;
 
@@ -49,10 +48,6 @@ public class ExpressionEngine {
     private Bindings bindings = null;
     private Pattern expressionPattern = Pattern.compile("(\\$\\{[^}]+\\})"); // TODO this isn't correct yet...
 
-    private HashMap<String, Callable<String>> internalVariableUpdaters = HashMap<>() {
-        {
-            put("machine_x", (ControllerStatus status, Units units) -> status.getMachineCoord().getPositionIn(units).get(Axis.X));
-        }}
 
     public ExpressionEngine() {
         // TODO: maybe ingest UGS settings to see if we have persisted any variables
@@ -86,9 +81,9 @@ public class ExpressionEngine {
             if (!expressionsFound) {
                 // before the first expression is evaluated, update all variables
                 // within the JavaScript scope to reflect any changes that have occured
-                // in the UGS ExpressionVariables store. This is important, for example,
+                // in the ExpressionVariables. This is important, for example,
                 // when we have JavaScript variables corresponding to internal states such
-                // as machine X/Y/Z locations, etc.
+                // as machine/work X/Y/Z locations, etc.
                 this.syncVariables();
 
                 expressionsFound = true;
@@ -112,11 +107,11 @@ public class ExpressionEngine {
     }
 
     private void syncVariables() {
-        // TODO update JavaScript & Expression internal variables from controller state
+        // TODO update JavaScript & Expression builtin variables from controller state
         ControllerStatus status = this.controller.getControllerStatus();
         Units units = this.settings.getPreferredUnits();
-        // TODO for-loop iterating over internalVariableUpdaters
-
+        this.variables.builtin.update(status, units);
+        // TODO loop over builtin variables and update in JavaScript scope
 
         // TODO update Expression Variables from JavaScript variables
 

@@ -18,6 +18,11 @@
  */
 package com.willwinder.universalgcodesender.model;
 
+
+import com.willwinder.universalgcodesender.listeners.ControllerStatus;
+import com.willwinder.universalgcodesender.model.Axis;
+import com.willwinder.universalgcodesender.model.UnitUtils.Units;
+
 import java.util.HashMap;
 
 /**
@@ -27,9 +32,36 @@ import java.util.HashMap;
  * @author coco
  */
 public class ExpressionVariables {
-    private HashMap<String,String> internalVariables = new HashMap<String,String>();
-    private HashMap<String,String> userDefinedVariables = new HashMap<String,String>();
-    private HashMap<String,boolean> lockedUserDefinedVariables = new HashMap<String,boolean>();
+    public class Builtin {
+        public static final String MachineX = "machine_x";
+        public static final String MachineY = "machine_y";
+        public static final String MachineZ = "machine_z";
+        public static final String WorkX    = "work_x";
+        public static final String WorkY    = "work_y";
+        public static final String WorkZ    = "work_z";
+
+        public HashMap<String, Callable<String>> getters = HashMap<>() {
+            {
+                put(MachineX, (ControllerStatus status, Units units) -> status.getMachineCoord().getPositionIn(units).get(Axis.X));
+                put(MachineY, (ControllerStatus status, Units units) -> status.getMachineCoord().getPositionIn(units).get(Axis.Y));
+                put(MachineZ, (ControllerStatus status, Units units) -> status.getMachineCoord().getPositionIn(units).get(Axis.Z));
+                put(WorkX, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.X));
+                put(WorkY, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.Y));
+                put(WorkZ, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.Z));
+            }};
+
+        public HashMap<String,String> variables = new HashMap<String,String>();
+
+        public void update(ControllerStatus status, Units units) {
+            // TODO iterate over all builtin variables and get newest values
+        }
+    }
+
+    public Builtin builtin = new Builtin();
+    private HashMap<String,String> userVariables = new HashMap<String,String>();
+    private HashMap<String,boolean> lockedUserVariables = new HashMap<String,boolean>();
+
+
 
     public ExpressionVariables() {
         // TODO: maybe ingest UGS settings to see if we have persisted any variables
@@ -40,24 +72,16 @@ public class ExpressionVariables {
     }
 
     public String get(String variableName) {
-        return userDefinedVariables.get(variableName);
+        return userVariables.get(variableName);
     }
 
     public void lock(String variableName) {
-        this.set(variableName, userDefinedVariables.get(variableName), true);
-    }
-
-    public void setInternal(String variableName, String variableValue) {
-        internalVariables.put(variableName, variableValue);
-    }
-
-    public String getInternal(String variableName) {
-        return internalVariables.get(variableName);
+        this.set(variableName, userVariables.get(variableName), true);
     }
 
     private void set(String variableName, String variableValue, boolean lock) {
-        userDefinedVariables.put(variableName, variableValue);
-        lockedUserDefinedVariables.put(variableName, lock);
+        userVariables.put(variableName, variableValue);
+        lockedUserVariables.put(variableName, lock);
     }
 
 }

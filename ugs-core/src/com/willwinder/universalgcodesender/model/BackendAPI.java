@@ -107,7 +107,7 @@ public interface BackendAPI extends BackendAPIReadOnly {
      * @param f location to export processed gcode
      */
     void preprocessAndExportToFile(File f) throws Exception;
-    
+
     // Control options
     void connect(String firmware, String port, int baudRate) throws Exception;
     void disconnect() throws Exception;
@@ -168,7 +168,7 @@ public interface BackendAPI extends BackendAPIReadOnly {
 
     // Programatically call an override.
     void sendOverrideCommand(Overrides override) throws Exception;
-           
+
     // Shouldn't be needed often.
     IController getController();
 
