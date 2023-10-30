@@ -18,17 +18,31 @@
  */
 package com.willwinder.universalgcodesender.model;
 
+import com.willwinder.universalgcodesender.model.ExpressionEngine;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.*;
+import javax.script.ScriptEngine;
+import javax.script.ScriptContext;
+
 /**
  *
  * @author coco
  */
 public class ExpressionEngineTest {
+
+    // private static final String FIRMWARE = "GRBL";
+    // private static final String PORT = "/dev/ttyS0";
+    // private static final int BAUD_RATE = 9600;
+
+    // private IController controller;
+
+    // private Settings settings;
+
 
     @Before
     public void setup() {}
@@ -37,8 +51,31 @@ public class ExpressionEngineTest {
     public void teardown() {}
 
     @Test
-    public void testSomething() {
-        boolean expected = true;
-        Assert.assertEquals(expected, true);
+    public void testSyncUserVariablesToScriptingScope() throws Exception {
+        ExpressionEngine engine = new ExpressionEngine();
+
+        engine.getVariables().set("myVar1", "3.14");
+        engine.getVariables().set("myVar2", "2.71");
+        engine.getVariables().set("myVar3", "2.66");
+
+        engine.syncUserVariablesToScriptingScope();
+
+        Assert.assertEquals("3.14", engine.getBindings().get("myVar1").toString());
+        Assert.assertEquals("2.71", engine.getBindings().get("myVar2").toString());
+        Assert.assertEquals("2.66", engine.getBindings().get("myVar3").toString());
+    }
+
+    @Test
+    public void testSyncScriptingScopeToUserVariables() throws Exception {
+        ExpressionEngine engine = new ExpressionEngine();
+        ScriptEngine scope = engine.getScriptEngine();
+
+        scope.eval("toolOffset = 66.6 / 3");
+        scope.eval("PROBE_Z = toolOffset + 3");
+
+        engine.syncScriptingScopeToUserVariables();
+
+        Assert.assertEquals("22.2", engine.getVariables().get("toolOffset"));
+        Assert.assertEquals("25.2", engine.getVariables().get("PROBE_Z"));
     }
 }

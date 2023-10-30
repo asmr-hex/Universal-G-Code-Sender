@@ -23,6 +23,7 @@ import com.willwinder.universalgcodesender.listeners.ControllerStatus;
 import com.willwinder.universalgcodesender.model.Axis;
 import com.willwinder.universalgcodesender.model.UnitUtils.Units;
 
+import javax.script.Bindings;
 import java.util.function.BiFunction;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +36,8 @@ import java.util.Set;
  * @author coco
  */
 // TODO maybe just extend from HashMap so we get put, get, entrySet for free...
+// TODO refactor so we only store a Bindings HashMap so we don't have to sync anything actually...
+// but just expose a method for manually setting values in the Bindings...
 public class ExpressionVariables {
     public class Builtin {
         public static final String MachineX = "machine_x";
@@ -56,19 +59,34 @@ public class ExpressionVariables {
         }
 
         public HashMap<String,String> variables = new HashMap<String,String>();
+        private Bindings bindings = null;
+
+        public Builtin(Bindings bindings) {
+            this.bindings = bindings;
+        }
 
         public void update(ControllerStatus status, Units units) {
-            for (Map.Entry<String, BiFunction<ControllerStatus, Units, String>> entry : getters.entrySet())
+            for (Map.Entry<String, BiFunction<ControllerStatus, Units, String>> entry : getters.entrySet()) {
                 variables.put(entry.getKey(), entry.getValue().apply(status, units).toString());
+                bindings.put(entry.getKey(), variables.get(entry.getKey()));
+            }
         }
     }
 
-    public Builtin builtin = new Builtin();
-    private HashMap<String,String> userVariables = new HashMap<String,String>();
+    public Builtin builtin = null;
+    private Bindings bindings = null;
+    public HashMap<String,String> userVariables = new HashMap<String,String>();
     private HashMap<String, Boolean> lockedUserVariables = new HashMap<String, Boolean>();
 
-    public ExpressionVariables() {
+    public ExpressionVariables(Bindings bindings) {
         // TODO: maybe ingest UGS settings to see if we have persisted any variables
+
+        this.bindings = bindings;
+        builtin = new Builtin(bindings);
+    }
+
+    public void declare(String variableName) {
+        this.bindings.put(variableName, null);
     }
 
     public void set(String variableName, String variableValue) {

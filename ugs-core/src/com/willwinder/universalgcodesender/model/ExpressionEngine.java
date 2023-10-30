@@ -29,7 +29,6 @@ import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import java.util.concurrent.Callable;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.regex.Matcher;
@@ -43,7 +42,7 @@ import java.util.regex.Pattern;
 public class ExpressionEngine {
     private IController controller = null;
     private Settings settings = null;
-    private ExpressionVariables variables = new ExpressionVariables();
+    private ExpressionVariables variables = null;
     private ScriptEngineManager mgr = new ScriptEngineManager();
     private ScriptEngine engine = null;
     private Bindings bindings = null;
@@ -52,8 +51,11 @@ public class ExpressionEngine {
 
     public ExpressionEngine() {
         // TODO: maybe ingest UGS settings to see if we have persisted any variables
+
         engine = mgr.getEngineByName("JavaScript");
         bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+
+        variables = new ExpressionVariables(bindings);
     }
 
     public void connect(IController controller, Settings settings) {
@@ -63,6 +65,14 @@ public class ExpressionEngine {
 
     public ExpressionVariables getVariables() {
         return variables;
+    }
+
+    public Bindings getBindings() {
+        return bindings;
+    }
+
+    public ScriptEngine getScriptEngine() {
+        return engine;
     }
 
     /**
@@ -123,7 +133,7 @@ public class ExpressionEngine {
 
         // update builtin variables within JavaScript scope
         for (Map.Entry<String, String> entry : this.variables.builtin.variables.entrySet()) {
-            this.engine.eval("%s = %s".format(entry.getKey(), entry.getValue()));
+            this.engine.eval(String.format("%s = %s", entry.getKey(), entry.getValue()));
         }
     }
 
@@ -143,7 +153,7 @@ public class ExpressionEngine {
 
         // update builtin variables within JavaScript scope
         for (Map.Entry<String, String> entry : this.variables.entrySet()) {
-            this.engine.eval("%s = %s".format(entry.getKey(), entry.getValue()));
+            this.engine.eval(String.format("%s = %s", entry.getKey(), entry.getValue()));
         }
     }
 
