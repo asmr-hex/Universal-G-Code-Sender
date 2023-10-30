@@ -7,5 +7,10 @@
  * key-value pairs can be persisted in a settings file or just ephemeral (checkbox?)
 * find where each line is sent off to the controller. add an "in-flight" processor to check if this outgoing line has been flagged as a javascript expression, if so, evaluate it and send out the evaluated line.
 
+## TODOS
+* [ ] finish implementing checks and filtering in ExpressionEngine
+* [ ] Add support for persisting some expression variables within application settings so things are lost when program restarts
+* [ ] implement a plugin for visualizing/editing expression variables
+
 ## references
 * [Feature Request](https://github.com/winder/Universal-G-Code-Sender/issues/1426)
