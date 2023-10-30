@@ -32,8 +32,8 @@ import javax.script.ScriptException;
 import java.util.concurrent.Callable;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.regex.Matcher
-import java.util.regex.Pattern
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A class for handling parsing of Javascript expressions.
@@ -78,6 +78,7 @@ public class ExpressionEngine {
         StringBuilder result = new StringBuilder();
         Matcher matcher = expressionPattern.matcher(commandText);
         boolean expressionsFound = false;
+        int lastIndex = 0;
         while (matcher.find()) {
             if (!expressionsFound) {
                 // before the first expression is evaluated, we must sync all builtins to
@@ -90,17 +91,21 @@ public class ExpressionEngine {
 
             // TODO ensure that expression isn't mutating internal variables
 
-            // TODO evaluate the expression in the JavaScript engine.
+            // evaluate the expression in the JavaScript engine.
+            String evaluated = this.engine.eval(expression).toString();
 
+            result.append(commandText, lastIndex, matcher.start()).append(evaluated);
+
+            lastIndex = matcher.end();
         }
         matcher.appendTail(result);
 
         if (expressionsFound) {
             // update internal mapping with new state in scripting scope
-            this.syncScriptingScopeToUserVariables()
+            this.syncScriptingScopeToUserVariables();
         }
 
-        return result;
+        return result.toString();
     }
 
     /**
@@ -110,14 +115,14 @@ public class ExpressionEngine {
      * of builtin variables should always be the same as the bindings within the
      * JavaScript scope.
      */
-    public void syncBuiltinVariablesToScriptingScope() {
+    public void syncBuiltinVariablesToScriptingScope() throws Exception {
         // update builtin variables from controller status
         ControllerStatus status = this.controller.getControllerStatus();
         Units units = this.settings.getPreferredUnits();
         this.variables.builtin.update(status, units);
 
         // update builtin variables within JavaScript scope
-        for (Map.entry<String, String> entry : this.variables.builtin.variables.entrySet()) {
+        for (Map.Entry<String, String> entry : this.variables.builtin.variables.entrySet()) {
             this.engine.eval("%s = %s".format(entry.getKey(), entry.getValue()));
         }
     }
@@ -133,11 +138,11 @@ public class ExpressionEngine {
      * Consequently, we should only allow updating the key/value pairs directly in the user
      * variables map when no gcode is being run and when the controller is Idle.
      */
-    public void syncUserVariablesToScriptingScope() {
+    public void syncUserVariablesToScriptingScope() throws Exception {
         // TODO check if controller state is IDLE, if not return early to avoid any race conditions.
 
         // update builtin variables within JavaScript scope
-        for (Map.entry<String, String> entry : this.variables.entrySet()) {
+        for (Map.Entry<String, String> entry : this.variables.entrySet()) {
             this.engine.eval("%s = %s".format(entry.getKey(), entry.getValue()));
         }
     }
@@ -149,9 +154,10 @@ public class ExpressionEngine {
      * are being evaluated and sent).
      */
     public void syncScriptingScopeToUserVariables() {
-        // TODO iterate over all bindings and sync them to the variable mapping.
-
-        // TODO somehow update the Expression Variables with updated bindings.
-        // we could iterate over all new bindings? Bindings extends a Map (https://docs.oracle.com/javase/8/docs/api/javax/script/Bindings.html)
+        // iterate over all bindings and sync them to the variable mapping.
+        for (Map.Entry<String, Object> entry : this.bindings.entrySet()) {
+            // TODO filter out irrelevant bindings existing by default in JS scope.
+            this.variables.set(entry.getKey(), entry.getValue().toString());
+        }
     }
 }
