@@ -253,7 +253,7 @@ public class GUIBackend implements BackendAPI {
     public void sendGcodeCommand(boolean restoreParserState, String commandText) throws Exception {
         if (this.isConnected()) {
             // perform in-flight processing for evaluating expressions, resolving all variables
-            commandText = expressionEngine.eval(commandText);
+            commandText = expressionEngine.process(commandText);
 
             GcodeCommand command = controller.createCommand(commandText);
             command.setTemporaryParserModalChange(restoreParserState);

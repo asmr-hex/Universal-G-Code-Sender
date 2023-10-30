@@ -141,5 +141,8 @@ public class ExpressionEngineTest {
 
         result = engine.process("G0 X100 Y300 F800");
         Assert.assertEquals("G0 X100 Y300 F800", result);
+
+        result = engine.process("G00");
+        Assert.assertEquals("G00", result);
     }
 }
