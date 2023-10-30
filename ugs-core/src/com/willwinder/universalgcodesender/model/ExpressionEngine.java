@@ -30,6 +30,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.util.concurrent.Callable;
+import java.util.Map;
 import java.util.HashMap;
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -79,13 +80,9 @@ public class ExpressionEngine {
         boolean expressionsFound = false;
         while (matcher.find()) {
             if (!expressionsFound) {
-                // before the first expression is evaluated, update all variables
-                // within the JavaScript scope to reflect any changes that have occured
-                // in the ExpressionVariables. This is important, for example,
-                // when we have JavaScript variables corresponding to internal states such
-                // as machine/work X/Y/Z locations, etc.
-                this.syncVariables();
-
+                // before the first expression is evaluated, we must sync all builtins to
+                // the scripting scope.
+                this.syncBuiltinVariablesToScriptingScope();
                 expressionsFound = true;
             }
 
@@ -99,21 +96,62 @@ public class ExpressionEngine {
         matcher.appendTail(result);
 
         if (expressionsFound) {
-            // TODO somehow update the Expression Variables with updated bindings.
-            // we could iterate over all new bindings? Bindings extends a Map (https://docs.oracle.com/javase/8/docs/api/javax/script/Bindings.html)
+            // update internal mapping with new state in scripting scope
+            this.syncScriptingScopeToUserVariables()
         }
 
         return result;
     }
 
-    private void syncVariables() {
-        // TODO update JavaScript & Expression builtin variables from controller state
+    /**
+     * Syncs builtin variables, such as machine positions, to the scripting scope.
+     * Since builtin variables have a single source of truth (from the controller),
+     * we don't have to worry about when we call this because the internal mapping
+     * of builtin variables should always be the same as the bindings within the
+     * JavaScript scope.
+     */
+    public void syncBuiltinVariablesToScriptingScope() {
+        // update builtin variables from controller status
         ControllerStatus status = this.controller.getControllerStatus();
         Units units = this.settings.getPreferredUnits();
         this.variables.builtin.update(status, units);
-        // TODO loop over builtin variables and update in JavaScript scope
 
-        // TODO update Expression Variables from JavaScript variables
+        // update builtin variables within JavaScript scope
+        for (Map.entry<String, String> entry : this.variables.builtin.variables.entrySet()) {
+            this.engine.eval("%s = %s".format(entry.getKey(), entry.getValue()));
+        }
+    }
 
+    /**
+     * Syncs user variables from the internal map of defined variables to bindings
+     * in the JavaScript scope. User defined variables can be set in two ways:
+     *  1. within a scripted expression (e.g. "{myVar = 3.14}" in a Macro or in gcode).
+     *  2. by directly putting a key/value pair within the ExpressionVariables user variables
+     *     map (via the Expression Variables plugin for example).
+     * Since user defined variables can have two sources, we must enforce rules so we
+     * don't clobber values from either source.
+     * Consequently, we should only allow updating the key/value pairs directly in the user
+     * variables map when no gcode is being run and when the controller is Idle.
+     */
+    public void syncUserVariablesToScriptingScope() {
+        // TODO check if controller state is IDLE, if not return early to avoid any race conditions.
+
+        // update builtin variables within JavaScript scope
+        for (Map.entry<String, String> entry : this.variables.entrySet()) {
+            this.engine.eval("%s = %s".format(entry.getKey(), entry.getValue()));
+        }
+    }
+
+    /**
+     * Syncs bindings from the JavaScript scope to the internal expression variable mapping.
+     * This can be done at anytime due to the restriction of only allowing syncing from
+     * internal mapping to JS scope when the controller is in an IDLE state (i.e. no gcode lines
+     * are being evaluated and sent).
+     */
+    public void syncScriptingScopeToUserVariables() {
+        // TODO iterate over all bindings and sync them to the variable mapping.
+
+        // TODO somehow update the Expression Variables with updated bindings.
+        // we could iterate over all new bindings? Bindings extends a Map (https://docs.oracle.com/javase/8/docs/api/javax/script/Bindings.html)
     }
 }

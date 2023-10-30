@@ -23,7 +23,9 @@ import com.willwinder.universalgcodesender.listeners.ControllerStatus;
 import com.willwinder.universalgcodesender.model.Axis;
 import com.willwinder.universalgcodesender.model.UnitUtils.Units;
 
+import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
 
 /**
  * A class for storing variables which may be accessible for read/write
@@ -53,15 +55,14 @@ public class ExpressionVariables {
         public HashMap<String,String> variables = new HashMap<String,String>();
 
         public void update(ControllerStatus status, Units units) {
-            // TODO iterate over all builtin variables and get newest values
+            for (Map.Entry<String, Callable<String>> entry : getters.entrySet())
+                variables.put(entry.getKey(), entry.getValue().call(status, units).toString());
         }
     }
 
     public Builtin builtin = new Builtin();
     private HashMap<String,String> userVariables = new HashMap<String,String>();
     private HashMap<String,boolean> lockedUserVariables = new HashMap<String,boolean>();
-
-
 
     public ExpressionVariables() {
         // TODO: maybe ingest UGS settings to see if we have persisted any variables
@@ -73,6 +74,10 @@ public class ExpressionVariables {
 
     public String get(String variableName) {
         return userVariables.get(variableName);
+    }
+
+    public Set<Map.Entry<String,String>> entrySet() {
+        return userVariables.entrySet();
     }
 
     public void lock(String variableName) {
