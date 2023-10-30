@@ -756,8 +756,8 @@ public class GUIBackend implements BackendAPI {
     }
 
     @Override
-    public ExpressionVariables getExpressionVariables() {
-        return this.expressionEngine.getVariables();
+    public ExpressionEngine getExpressionEngine() {
+        return this.expressionEngine;
     }
 
     ////////////////////////

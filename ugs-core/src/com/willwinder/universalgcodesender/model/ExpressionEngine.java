@@ -29,6 +29,7 @@ import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import java.util.function.BiFunction;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.regex.Matcher;
@@ -40,22 +41,46 @@ import java.util.regex.Pattern;
  * @author coco
  */
 public class ExpressionEngine {
+    // public Pattern pattern = Pattern.compile("(\\$\\{[^}]+\\})");
+    public Pattern pattern = Pattern.compile("\\$\\{[^}]+\\}");
+
+    private  Bindings variables = null;
     private IController controller = null;
     private Settings settings = null;
-    private ExpressionVariables variables = null;
     private ScriptEngineManager mgr = new ScriptEngineManager();
     private ScriptEngine engine = null;
-    private Bindings bindings = null;
-    private Pattern expressionPattern = Pattern.compile("(\\$\\{[^}]+\\})"); // TODO this isn't correct yet...
+
+    public class BuiltinVariables {
+        public static final String MachineX = "machine_x";
+        public static final String MachineY = "machine_y";
+        public static final String MachineZ = "machine_z";
+        public static final String WorkX    = "work_x";
+        public static final String WorkY    = "work_y";
+        public static final String WorkZ    = "work_z";
+        public static HashMap<String, BiFunction<ControllerStatus, Units, String>> getters;
+        static {
+            getters = new HashMap<>();
+            getters.put(MachineX, (ControllerStatus status, Units units) -> Double.toString(status.getMachineCoord().getPositionIn(units).get(Axis.X)));
+            getters.put(MachineY, (ControllerStatus status, Units units) -> Double.toString(status.getMachineCoord().getPositionIn(units).get(Axis.Y)));
+            getters.put(MachineZ, (ControllerStatus status, Units units) -> Double.toString(status.getMachineCoord().getPositionIn(units).get(Axis.Z)));
+            getters.put(WorkX, (ControllerStatus status, Units units) -> Double.toString(status.getWorkCoord().getPositionIn(units).get(Axis.X)));
+            getters.put(WorkY, (ControllerStatus status, Units units) -> Double.toString(status.getWorkCoord().getPositionIn(units).get(Axis.Y)));
+            getters.put(WorkZ, (ControllerStatus status, Units units) -> Double.toString(status.getWorkCoord().getPositionIn(units).get(Axis.Z)));
+        }
+
+        public static void update(ControllerStatus status, Units units, Bindings bindings) {
+            for (Map.Entry<String, BiFunction<ControllerStatus, Units, String>> entry : getters.entrySet()) {
+                bindings.put(entry.getKey(), entry.getValue().apply(status, units).toString());
+            }
+        }
+    }
 
 
     public ExpressionEngine() {
         // TODO: maybe ingest UGS settings to see if we have persisted any variables
 
-        engine = mgr.getEngineByName("JavaScript");
-        bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
-
-        variables = new ExpressionVariables(bindings);
+        this.engine = mgr.getEngineByName("JavaScript");
+        this.variables = engine.getBindings(ScriptContext.ENGINE_SCOPE);
     }
 
     public void connect(IController controller, Settings settings) {
@@ -63,16 +88,19 @@ public class ExpressionEngine {
         this.settings = settings;
     }
 
-    public ExpressionVariables getVariables() {
-        return variables;
+    public String eval(String expression) throws Exception {
+        return this.engine.eval(expression).toString();
     }
 
-    public Bindings getBindings() {
-        return bindings;
+    public void put(String key, String value) throws Exception {
+        // TODO filter on builtins.
+
+        // use engine.eval instead of variables.put to implicitly coerce types in javascript
+        this.engine.eval(String.format("%s = %s", key, value));
     }
 
-    public ScriptEngine getScriptEngine() {
-        return engine;
+    public String get(String key) {
+        return this.variables.get(key).toString();
     }
 
     /**
@@ -84,90 +112,38 @@ public class ExpressionEngine {
      * @returns modified command line string with all expressions evaluated
      * @throws Exception if variables cannot be resolved, or if expression is invalid
      */
-    public String eval(String commandText) throws Exception {
+    public String process(String commandText) throws Exception {
         StringBuilder result = new StringBuilder();
-        Matcher matcher = expressionPattern.matcher(commandText);
+        Matcher matcher = pattern.matcher(commandText);
         boolean expressionsFound = false;
-        int lastIndex = 0;
         while (matcher.find()) {
             if (!expressionsFound) {
                 // before the first expression is evaluated, we must sync all builtins to
                 // the scripting scope.
-                this.syncBuiltinVariablesToScriptingScope();
+                BuiltinVariables.update(this.controller.getControllerStatus(), this.settings.getPreferredUnits(), this.variables);
                 expressionsFound = true;
             }
 
-            String expression = matcher.group(1);
+            String match = matcher.group();
+            String expression = match.substring(2, match.length() - 1);
 
             // TODO ensure that expression isn't mutating internal variables
 
             // evaluate the expression in the JavaScript engine.
-            String evaluated = this.engine.eval(expression).toString();
+            String evaluated = eval(expression);
 
-            result.append(commandText, lastIndex, matcher.start()).append(evaluated);
+            // TODO if evaluated is null....raise
 
-            lastIndex = matcher.end();
+            // if the entire command is just an expression, put it in comments so it
+            // isn't evaluated by the controller.
+            if (match.trim().equals(commandText.trim())) {
+                evaluated = String.format("(%s -> %s)", expression.trim(), evaluated);
+            }
+
+            matcher.appendReplacement(result, evaluated);
         }
         matcher.appendTail(result);
 
-        if (expressionsFound) {
-            // update internal mapping with new state in scripting scope
-            this.syncScriptingScopeToUserVariables();
-        }
-
-        return result.toString();
-    }
-
-    /**
-     * Syncs builtin variables, such as machine positions, to the scripting scope.
-     * Since builtin variables have a single source of truth (from the controller),
-     * we don't have to worry about when we call this because the internal mapping
-     * of builtin variables should always be the same as the bindings within the
-     * JavaScript scope.
-     */
-    public void syncBuiltinVariablesToScriptingScope() throws Exception {
-        // update builtin variables from controller status
-        ControllerStatus status = this.controller.getControllerStatus();
-        Units units = this.settings.getPreferredUnits();
-        this.variables.builtin.update(status, units);
-
-        // update builtin variables within JavaScript scope
-        for (Map.Entry<String, String> entry : this.variables.builtin.variables.entrySet()) {
-            this.engine.eval(String.format("%s = %s", entry.getKey(), entry.getValue()));
-        }
-    }
-
-    /**
-     * Syncs user variables from the internal map of defined variables to bindings
-     * in the JavaScript scope. User defined variables can be set in two ways:
-     *  1. within a scripted expression (e.g. "{myVar = 3.14}" in a Macro or in gcode).
-     *  2. by directly putting a key/value pair within the ExpressionVariables user variables
-     *     map (via the Expression Variables plugin for example).
-     * Since user defined variables can have two sources, we must enforce rules so we
-     * don't clobber values from either source.
-     * Consequently, we should only allow updating the key/value pairs directly in the user
-     * variables map when no gcode is being run and when the controller is Idle.
-     */
-    public void syncUserVariablesToScriptingScope() throws Exception {
-        // TODO check if controller state is IDLE, if not return early to avoid any race conditions.
-
-        // update builtin variables within JavaScript scope
-        for (Map.Entry<String, String> entry : this.variables.entrySet()) {
-            this.engine.eval(String.format("%s = %s", entry.getKey(), entry.getValue()));
-        }
-    }
-
-    /**
-     * Syncs bindings from the JavaScript scope to the internal expression variable mapping.
-     * This can be done at anytime due to the restriction of only allowing syncing from
-     * internal mapping to JS scope when the controller is in an IDLE state (i.e. no gcode lines
-     * are being evaluated and sent).
-     */
-    public void syncScriptingScopeToUserVariables() {
-        // iterate over all bindings and sync them to the variable mapping.
-        for (Map.Entry<String, Object> entry : this.bindings.entrySet()) {
-            // TODO filter out irrelevant bindings existing by default in JS scope.
-            this.variables.set(entry.getKey(), entry.getValue().toString());
-        }
+        return result.toString().trim();
     }
 }

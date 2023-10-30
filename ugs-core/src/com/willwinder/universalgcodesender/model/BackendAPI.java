@@ -206,7 +206,7 @@ public interface BackendAPI extends BackendAPIReadOnly {
     /**
      * Returns an object which can read/write variables accessible in gcode JavaScript expressions.
      *
-     * @return the gcode expression variables store
+     * @return the expression engine
      */
-    ExpressionVariables getExpressionVariables();
+    ExpressionEngine getExpressionEngine();
 }
