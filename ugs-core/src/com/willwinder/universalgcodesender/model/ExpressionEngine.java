@@ -41,7 +41,6 @@ import java.util.regex.Pattern;
  * @author coco
  */
 public class ExpressionEngine {
-    // public Pattern pattern = Pattern.compile("(\\$\\{[^}]+\\})");
     public Pattern pattern = Pattern.compile("\\$\\{[^}]+\\}");
 
     private  Bindings variables = null;
