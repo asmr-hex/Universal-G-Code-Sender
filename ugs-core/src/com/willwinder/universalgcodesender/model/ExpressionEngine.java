@@ -20,9 +20,13 @@ package com.willwinder.universalgcodesender.model;
 
 import com.willwinder.universalgcodesender.IController;
 import com.willwinder.universalgcodesender.listeners.ControllerStatus;
+import com.willwinder.universalgcodesender.listeners.UGSEventListener;
 import com.willwinder.universalgcodesender.model.UnitUtils.Units;
+import com.willwinder.universalgcodesender.model.UGSEvent;
+import com.willwinder.universalgcodesender.model.events.ControllerStatusEvent;
+import com.willwinder.universalgcodesender.model.events.ExpressionEngineEvent;
+import com.willwinder.universalgcodesender.model.UGSEventDispatcher;
 import com.willwinder.universalgcodesender.utils.Settings;
-
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -40,14 +44,16 @@ import java.util.regex.Pattern;
  *
  * @author coco
  */
-public class ExpressionEngine {
-    public Pattern pattern = Pattern.compile("\\$\\{[^}]+\\}");
+public class ExpressionEngine implements UGSEventListener {
+    public Pattern pattern = Pattern.compile("\\{[^}]+\\}");
 
-    private  Bindings variables = null;
+    private Bindings variables = null;
     private IController controller = null;
     private Settings settings = null;
     private ScriptEngineManager mgr = new ScriptEngineManager();
     private ScriptEngine engine = null;
+
+    private UGSEventDispatcher dispatcher = null;
 
     public class BuiltinVariables {
         public static final String MachineX = "machine_x";
@@ -56,30 +62,38 @@ public class ExpressionEngine {
         public static final String WorkX    = "work_x";
         public static final String WorkY    = "work_y";
         public static final String WorkZ    = "work_z";
-        public static HashMap<String, BiFunction<ControllerStatus, Units, String>> getters;
+        // TODO make lambdas return Object since we are using bindings.put
+        public static HashMap<String, BiFunction<ControllerStatus, Units, Object>> getters;
         static {
             getters = new HashMap<>();
-            getters.put(MachineX, (ControllerStatus status, Units units) -> Double.toString(status.getMachineCoord().getPositionIn(units).get(Axis.X)));
-            getters.put(MachineY, (ControllerStatus status, Units units) -> Double.toString(status.getMachineCoord().getPositionIn(units).get(Axis.Y)));
-            getters.put(MachineZ, (ControllerStatus status, Units units) -> Double.toString(status.getMachineCoord().getPositionIn(units).get(Axis.Z)));
-            getters.put(WorkX, (ControllerStatus status, Units units) -> Double.toString(status.getWorkCoord().getPositionIn(units).get(Axis.X)));
-            getters.put(WorkY, (ControllerStatus status, Units units) -> Double.toString(status.getWorkCoord().getPositionIn(units).get(Axis.Y)));
-            getters.put(WorkZ, (ControllerStatus status, Units units) -> Double.toString(status.getWorkCoord().getPositionIn(units).get(Axis.Z)));
+            getters.put(MachineX, (ControllerStatus status, Units units) -> status.getMachineCoord().getPositionIn(units).get(Axis.X));
+            getters.put(MachineY, (ControllerStatus status, Units units) -> status.getMachineCoord().getPositionIn(units).get(Axis.Y));
+            getters.put(MachineZ, (ControllerStatus status, Units units) -> status.getMachineCoord().getPositionIn(units).get(Axis.Z));
+            getters.put(WorkX, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.X));
+            getters.put(WorkY, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.Y));
+            getters.put(WorkZ, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.Z));
+        }
+
+        public static void init(Bindings bindings) {
+            for (String key : getters.keySet()) {
+                bindings.put(key, "");
+            }
         }
 
         public static void update(ControllerStatus status, Units units, Bindings bindings) {
-            for (Map.Entry<String, BiFunction<ControllerStatus, Units, String>> entry : getters.entrySet()) {
-                bindings.put(entry.getKey(), entry.getValue().apply(status, units).toString());
+            for (Map.Entry<String, BiFunction<ControllerStatus, Units, Object>> entry : getters.entrySet()) {
+                bindings.put(entry.getKey(), entry.getValue().apply(status, units));
             }
         }
     }
 
 
-    public ExpressionEngine() {
+    public ExpressionEngine(UGSEventDispatcher dispatcher) {
         // TODO: maybe ingest UGS settings to see if we have persisted any variables
-
         this.engine = mgr.getEngineByName("JavaScript");
         this.variables = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        this.dispatcher = dispatcher;
+        BuiltinVariables.init(this.variables);
     }
 
     public void connect(IController controller, Settings settings) {
@@ -91,15 +105,14 @@ public class ExpressionEngine {
         return this.engine.eval(expression).toString();
     }
 
-    public void put(String key, String value) throws Exception {
+    public void put(String key, Object value) throws Exception {
         // TODO filter on builtins.
 
-        // use engine.eval instead of variables.put to implicitly coerce types in javascript
-        this.engine.eval(String.format("%s = %s", key, value));
+        this.variables.put(key, value);
     }
 
-    public String get(String key) {
-        return this.variables.get(key).toString();
+    public Object get(String key) {
+        return this.variables.get(key);
     }
 
     /**
@@ -116,15 +129,10 @@ public class ExpressionEngine {
         Matcher matcher = pattern.matcher(commandText);
         boolean expressionsFound = false;
         while (matcher.find()) {
-            if (!expressionsFound) {
-                // before the first expression is evaluated, we must sync all builtins to
-                // the scripting scope.
-                BuiltinVariables.update(this.controller.getControllerStatus(), this.settings.getPreferredUnits(), this.variables);
-                expressionsFound = true;
-            }
+            expressionsFound = true;
 
             String match = matcher.group();
-            String expression = match.substring(2, match.length() - 1);
+            String expression = match.substring(1, match.length() - 1);
 
             // TODO ensure that expression isn't mutating internal variables
 
@@ -143,6 +151,19 @@ public class ExpressionEngine {
         }
         matcher.appendTail(result);
 
+        if (expressionsFound)
+            this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
+
         return result.toString().trim();
     }
+
+    @Override
+    public void UGSEvent(UGSEvent evt) {
+        if (evt instanceof ControllerStatusEvent controllerStatusEvent) {
+            // when the controller status has changed, update builtins, dispatch.
+            BuiltinVariables.update(controllerStatusEvent.getStatus(), this.settings.getPreferredUnits(), this.variables);
+            this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
+        }
+    }
+
 }

@@ -21,9 +21,13 @@ package com.willwinder.universalgcodesender.model;
 import com.willwinder.universalgcodesender.AbstractController;
 import com.willwinder.universalgcodesender.listeners.ControllerState;
 import com.willwinder.universalgcodesender.listeners.ControllerStatus;
+import com.willwinder.universalgcodesender.listeners.UGSEventListener;
+import com.willwinder.universalgcodesender.model.events.ControllerStatusEvent;
+import com.willwinder.universalgcodesender.model.events.ExpressionEngineEvent;
 import com.willwinder.universalgcodesender.utils.Settings;
 
 import java.util.regex.Matcher;
+import javax.script.Bindings;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -37,6 +41,21 @@ import static org.mockito.Mockito.when;
  */
 public class ExpressionEngineTest {
 
+    private UGSEventDispatcher dispatcher = new UGSEventDispatcher();
+
+    // a class just for testing purposes
+    private class ExpressionEngineEventListener implements UGSEventListener {
+        public Bindings variables;
+        @Override
+        public void UGSEvent(UGSEvent evt) {
+            if (evt instanceof ExpressionEngineEvent expressionEngineEvent) {
+                this.variables = expressionEngineEvent.getVariables();
+            }
+        }
+    }
+
+    private ExpressionEngineEventListener expressionEngineEventListener = new ExpressionEngineEventListener();
+
     @Before
     public void setup() throws Exception {}
 
@@ -45,7 +64,7 @@ public class ExpressionEngineTest {
 
     @Test
     public void testPut() throws Exception {
-        ExpressionEngine engine = new ExpressionEngine();
+        ExpressionEngine engine = new ExpressionEngine(dispatcher);
 
         engine.put("myVar1", "3.14");
         engine.put("myVar2", "2.71");
@@ -58,45 +77,126 @@ public class ExpressionEngineTest {
 
     @Test
     public void testEval() throws Exception {
-        ExpressionEngine engine = new ExpressionEngine();
+        ExpressionEngine engine = new ExpressionEngine(dispatcher);
 
         engine.eval("toolOffset = 66.6 / 3");
         engine.eval("PROBE_Z = toolOffset + 3");
 
-        Assert.assertEquals("22.2", engine.get("toolOffset"));
-        Assert.assertEquals("25.2", engine.get("PROBE_Z"));
+        Assert.assertEquals(22.2, engine.get("toolOffset"));
+        Assert.assertEquals(25.2, engine.get("PROBE_Z"));
     }
 
     @Test
     public void testEvalAfterPut() throws Exception {
-        ExpressionEngine engine = new ExpressionEngine();
+        ExpressionEngine engine = new ExpressionEngine(dispatcher);
 
-        engine.put("MeasuredHeight", "55.3");
+        engine.put("MeasuredHeight", 55.3);
         engine.eval("toolOffset = 4.7 + MeasuredHeight");
 
-        Assert.assertEquals("55.3", engine.get("MeasuredHeight"));
-        Assert.assertEquals("60.0", engine.get("toolOffset"));
+        Assert.assertEquals(55.3, engine.get("MeasuredHeight"));
+        Assert.assertEquals(60.0, engine.get("toolOffset"));
     }
 
     @Test
     public void testExpressionPatternMatcher() {
-        ExpressionEngine engine = new ExpressionEngine();
+        ExpressionEngine engine = new ExpressionEngine(dispatcher);
         Matcher matcher;
 
-        matcher = engine.pattern.matcher("${an expression}");
+        matcher = engine.pattern.matcher("{an expression}");
         Assert.assertTrue(matcher.find());
-        Assert.assertEquals("${an expression}", matcher.group(0));
+        Assert.assertEquals("{an expression}", matcher.group(0));
         // Assert.assertEquals("${an expression}", matcher.group(0));
 
-        matcher = engine.pattern.matcher("${an expression} ${another expression}");
+        matcher = engine.pattern.matcher("{an expression} {another expression}");
         Assert.assertTrue(matcher.find());
-        Assert.assertEquals("${an expression}", matcher.group());
+        Assert.assertEquals("{an expression}", matcher.group());
         Assert.assertTrue(matcher.find());
-        Assert.assertEquals("${another expression}", matcher.group());
+        Assert.assertEquals("{another expression}", matcher.group());
 
-        matcher = engine.pattern.matcher("G0 ${MZ} F800");
+        matcher = engine.pattern.matcher("G0 {MZ} F800");
         Assert.assertTrue(matcher.find());
-        Assert.assertEquals("${MZ}", matcher.group());
+        Assert.assertEquals("{MZ}", matcher.group());
+    }
+
+    @Test
+    public void testControllerStatusEventListener() throws Exception {
+        Settings settings = new Settings();
+        AbstractController controller = mock(AbstractController.class);
+        when(controller.getControllerStatus())
+            .thenReturn(
+                new ControllerStatus(ControllerState.IDLE,
+                                     new Position(1, 2, 33, UnitUtils.Units.MM),
+                                     new Position(7, 8, 9, UnitUtils.Units.MM)));
+
+        ExpressionEngine engine = new ExpressionEngine(dispatcher);
+        dispatcher.addListener(engine);
+        engine.connect(controller, settings);
+
+        Assert.assertEquals("", engine.get("machine_x"));
+        Assert.assertEquals("", engine.get("machine_y"));
+        Assert.assertEquals("", engine.get("machine_z"));
+        Assert.assertEquals("", engine.get("work_x"));
+        Assert.assertEquals("", engine.get("work_y"));
+        Assert.assertEquals("", engine.get("work_z"));
+
+        // update engine builtins from ControllerStatusEvent
+        dispatcher.sendUGSEvent(new ControllerStatusEvent(controller.getControllerStatus(), controller.getControllerStatus()));
+
+        Assert.assertEquals(1.0, engine.get("machine_x"));
+        Assert.assertEquals(2.0, engine.get("machine_y"));
+        Assert.assertEquals(33.0, engine.get("machine_z"));
+        Assert.assertEquals(7.0, engine.get("work_x"));
+        Assert.assertEquals(8.0, engine.get("work_y"));
+        Assert.assertEquals(9.0, engine.get("work_z"));
+    }
+
+
+    @Test
+    public void testExpressionEngineEventDispatch() throws Exception {
+        Settings settings = new Settings();
+        AbstractController controller = mock(AbstractController.class);
+        when(controller.getControllerStatus())
+            .thenReturn(
+                new ControllerStatus(ControllerState.IDLE,
+                                     new Position(1, 2, 33, UnitUtils.Units.MM),
+                                     new Position(7, 8, 9, UnitUtils.Units.MM)));
+
+        ExpressionEngine engine = new ExpressionEngine(dispatcher);
+        dispatcher.addListener(engine);
+        engine.connect(controller, settings);
+
+        dispatcher.addListener(expressionEngineEventListener);
+
+        // update engine builtins from ControllerStatusEvent, triggering an ExpressionEngineEvent
+        dispatcher.sendUGSEvent(new ControllerStatusEvent(
+                                    new ControllerStatus(ControllerState.IDLE,
+                                                         new Position(1, 2, 33, UnitUtils.Units.MM),
+                                                         new Position(7, 8, 9, UnitUtils.Units.MM)),
+                                    controller.getControllerStatus()));
+
+        Assert.assertEquals(1.0, expressionEngineEventListener.variables.get("machine_x"));
+        Assert.assertEquals(2.0, expressionEngineEventListener.variables.get("machine_y"));
+        Assert.assertEquals(33.0, expressionEngineEventListener.variables.get("machine_z"));
+        Assert.assertEquals(7.0, expressionEngineEventListener.variables.get("work_x"));
+        Assert.assertEquals(8.0, expressionEngineEventListener.variables.get("work_y"));
+        Assert.assertEquals(9.0, expressionEngineEventListener.variables.get("work_z"));
+
+        // update engine builtins from ControllerStatusEvent, triggering an ExpressionEngineEvent
+        dispatcher.sendUGSEvent(new ControllerStatusEvent(
+                                    new ControllerStatus(ControllerState.IDLE,
+                                                         new Position(5, 6, 99, UnitUtils.Units.MM),
+                                                         new Position(40, 41, 42, UnitUtils.Units.MM)),
+                                    controller.getControllerStatus()));
+
+        Assert.assertEquals(5.0, expressionEngineEventListener.variables.get("machine_x"));
+        Assert.assertEquals(6.0, expressionEngineEventListener.variables.get("machine_y"));
+        Assert.assertEquals(99.0, expressionEngineEventListener.variables.get("machine_z"));
+        Assert.assertEquals(40.0, expressionEngineEventListener.variables.get("work_x"));
+        Assert.assertEquals(41.0, expressionEngineEventListener.variables.get("work_y"));
+        Assert.assertEquals(42.0, expressionEngineEventListener.variables.get("work_z"));
+
+        engine.process("{myVar = 800}");
+        Assert.assertEquals(800, expressionEngineEventListener.variables.get("myVar"));
     }
 
     @Test
@@ -109,35 +209,39 @@ public class ExpressionEngineTest {
                                      new Position(1, 2, 33, UnitUtils.Units.MM),
                                      new Position(7, 8, 9, UnitUtils.Units.MM)));
 
-        ExpressionEngine engine = new ExpressionEngine();
+        ExpressionEngine engine = new ExpressionEngine(dispatcher);
+        dispatcher.addListener(engine);
         engine.connect(controller, settings);
+
+        // update engine builtins from ControllerStatusEvent
+        dispatcher.sendUGSEvent(new ControllerStatusEvent(controller.getControllerStatus(), controller.getControllerStatus()));
 
         String result;
 
-        result = engine.process("${myVar = 543}");
+        result = engine.process("{myVar = 543}");
         Assert.assertEquals("(myVar = 543 -> 543)", result);
-        Assert.assertEquals("543", engine.get("myVar"));
+        Assert.assertEquals(543, engine.get("myVar"));
 
-        result = engine.process("${   myVar = 543}");
+        result = engine.process("{   myVar = 543}");
         Assert.assertEquals("(myVar = 543 -> 543)", result);
-        Assert.assertEquals("543", engine.get("myVar"));
+        Assert.assertEquals(543, engine.get("myVar"));
 
-        result = engine.process("  ${   myVar = 543}   ");
+        result = engine.process("  {   myVar = 543}   ");
         Assert.assertEquals("(myVar = 543 -> 543)", result);
-        Assert.assertEquals("543", engine.get("myVar"));
+        Assert.assertEquals(543, engine.get("myVar"));
 
-        result = engine.process("${myVar = machine_z}");
+        result = engine.process("{myVar = machine_z}");
         Assert.assertEquals("(myVar = machine_z -> 33.0)", result);
-        Assert.assertEquals("33.0", engine.get("myVar"));
+        Assert.assertEquals(33.0, engine.get("myVar"));
 
 
-        result = engine.process("G0 ${myVar = 234}");
+        result = engine.process("G0 {myVar = 234}");
         Assert.assertEquals("G0 234", result);
-        Assert.assertEquals("234", engine.get("myVar"));
+        Assert.assertEquals(234.0, engine.get("myVar"));
 
-        result = engine.process("G0 ${myVar = 321} F800");
+        result = engine.process("G0 {myVar = 321} F800");
         Assert.assertEquals("G0 321 F800", result);
-        Assert.assertEquals("321", engine.get("myVar"));
+        Assert.assertEquals(321.0, engine.get("myVar"));
 
         result = engine.process("G0 X100 Y300 F800");
         Assert.assertEquals("G0 X100 Y300 F800", result);

@@ -86,7 +86,7 @@ public class GUIBackend implements BackendAPI {
     private File tempDir = null;
     private String firmware = null;
 
-    private ExpressionEngine expressionEngine = new ExpressionEngine();
+    private ExpressionEngine expressionEngine = null;
 
     /**
      * A temporary pointer to the active gcode stream. This is needed to make sure it is closed
@@ -99,6 +99,9 @@ public class GUIBackend implements BackendAPI {
 
     public GUIBackend(UGSEventDispatcher eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
+
+        expressionEngine = new ExpressionEngine(this.eventDispatcher);
+        this.addUGSEventListener(expressionEngine);
     }
 
     /////////////
