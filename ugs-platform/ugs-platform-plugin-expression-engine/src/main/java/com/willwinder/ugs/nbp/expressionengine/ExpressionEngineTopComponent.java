@@ -45,14 +45,14 @@ import javax.swing.*;
         openAtStartup = true
 )
 @ActionID(
-        category = LocalizingService.LocationStatusCategory,
-        id = LocalizingService.LocationStatusActionId
+        category = LocalizingService.ExpressionEngineCategory,
+        id = LocalizingService.ExpressionEngineActionId
 )
 @ActionReference(
-        path = LocalizingService.LocationStatusWindowPath
+        path = LocalizingService.ExpressionEngineWindowPath
 )
 @TopComponent.OpenActionRegistration(
-        displayName = "<Not localized:ExpressionEngineTopComponent>",
+        displayName = "Expression Engine",
         preferredID = "ExpressionEngineTopComponent"
 )
 public final class ExpressionEngineTopComponent extends TopComponent {
@@ -67,8 +67,8 @@ public final class ExpressionEngineTopComponent extends TopComponent {
 
     @Override
     public void componentOpened() {
-        setName(LocalizingService.LocationStatusTitle);
-        setToolTipText(LocalizingService.LocationStatusTooltip);
+        setName(LocalizingService.ExpressionEngineTitle);
+        setToolTipText(LocalizingService.ExpressionEngineTooltip);
     }
 
     @Override

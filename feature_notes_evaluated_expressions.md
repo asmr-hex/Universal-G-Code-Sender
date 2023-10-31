@@ -11,6 +11,8 @@
 * [ ] finish implementing checks and filtering in ExpressionEngine
 * [ ] Add support for persisting some expression variables within application settings so things are lost when program restarts
 * [ ] implement a plugin for visualizing/editing expression variables
+* [x] implement a custom event class for ExpressionEngineEvents
+* [x] subscribe ExpressionEngine to events for changing machine/work locations. (make ExpressionEngine implement UGSEventListener)
 
 ## commands
 run ExpressionEngine tests
@@ -23,12 +25,12 @@ mvn surefire:test -Dtest=ExpressionEngineTest -pl :ugs-core
 
 compile expressionengine plugin (with tests)
 ``` shell
-cd ugs-platform/ugs-platform-plugin-expression-engine/ && mvn test-compile && cd ../..
+cd ugs-platform/ugs-platform-plugin-expression-engine/ && mvn clean test-compile && cd ../..
 ```
 
 install expression engine module
 ``` shell
-cd ugs-platform/ugs-platform-plugin-expression-engine/ && mvn install && cd ../..
+cd ugs-platform/ugs-platform-plugin-expression-engine/ && mvn clean install && cd ../..
 ```
 after doing this, you need to go to the plugins download tab and update it...there might be a faster way.
 

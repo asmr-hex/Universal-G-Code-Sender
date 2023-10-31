@@ -96,6 +96,12 @@ public class LocalizingService {
     public final static String JogControlActionId = "com.willwinder.ugs.nbp.core.control.JogControlTopComponent";
     public final static String JogControlCategory = CATEGORY_WINDOW;
 
+    public final static String ExpressionEngineTitle = Localization.getString("platform.window.expressionengine", lang);
+    public final static String ExpressionEngineTooltip = Localization.getString("platform.window.expressionengine.tooltip", lang);
+    public final static String ExpressionEngineWindowPath = MENU_WINDOW;
+    public final static String ExpressionEngineActionId = "com.willwinder.ugs.nbp.expressionengine.ExpressionEngineTopComponent";
+    public final static String ExpressionEngineCategory = CATEGORY_WINDOW;
+
     public final static String FileBrowserTitle = Localization.getString("platform.window.filebrowser", lang);
     public final static String FileBrowserTooltip = Localization.getString("platform.window.filebrowser.tooltip", lang);
     public final static String FileBrowserWindowPath = MENU_WINDOW_CLASSIC;

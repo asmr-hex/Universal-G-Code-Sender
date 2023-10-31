@@ -28,9 +28,7 @@ import com.willwinder.universalgcodesender.listeners.ControllerStatus.EnabledPin
 import com.willwinder.universalgcodesender.listeners.UGSEventListener;
 import com.willwinder.universalgcodesender.model.*;
 import com.willwinder.universalgcodesender.model.UnitUtils.Units;
-import com.willwinder.universalgcodesender.model.events.ControllerStateEvent;
-import com.willwinder.universalgcodesender.model.events.ControllerStatusEvent;
-import com.willwinder.universalgcodesender.model.events.SettingChangedEvent;
+import com.willwinder.universalgcodesender.model.events.ExpressionEngineEvent;
 import com.willwinder.universalgcodesender.uielements.components.PopupEditor;
 import com.willwinder.universalgcodesender.uielements.components.RoundedPanel;
 import com.willwinder.universalgcodesender.uielements.helpers.SteppedSizeManager;
@@ -45,6 +43,7 @@ import java.util.List;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import javax.script.Bindings;
 
 /**
  * DRO style display panel with current controller state.
@@ -57,6 +56,9 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
     private final RoundedPanel activeStatePanel = new RoundedPanel(COMMON_RADIUS);
     private final JLabel activeStateValueLabel = new JLabel(" ");
 
+    private VariablesTableModel variablesTableModel;
+    private JTable variablesTable;
+
     private final BackendAPI backend;
 
     private Units units = null;
@@ -67,7 +69,7 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
             this.backend.addUGSEventListener(this);
         }
 
-        initFonts();
+        // initFonts();
         initComponents();
         initSizer();
 
@@ -77,7 +79,7 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
             setUnits(Units.INCH);
         }
 
-        updateControls();
+        // TODO updateVariables(variables)
     }
 
     private void initSizer() {
@@ -88,11 +90,11 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
         // sizer.addListener(fontManager::applyFonts);
     }
 
-    private void initFonts() {
-        // fontManager.init();
-        // GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        // fontManager.registerFonts(ge);
-    }
+    // private void initFonts() {
+    //     // fontManager.init();
+    //     // GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+    //     // fontManager.registerFonts(ge);
+    // }
 
     private void initComponents() {
         String debug = "";
@@ -107,6 +109,13 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
         activeStatePanel.add(activeStateValueLabel, "al center");
         activeStateValueLabel.setBorder(BorderFactory.createEmptyBorder());
         add(activeStatePanel, "growx");
+
+        variablesTableModel = new VariablesTableModel(); // TODO pass ExpressionEngine?
+        variablesTable = new JTable(variablesTableModel);
+        JScrollPane sp = new JScrollPane(variablesTable);
+        add(sp);
+
+        // TODO set default values to table
     }
 
     @Override
@@ -129,28 +138,20 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
 
     @Override
     public void UGSEvent(UGSEvent evt) {
-        if (evt instanceof ControllerStateEvent) {
-            updateControls();
-        } else if (evt instanceof ControllerStatusEvent controllerStatusEvent) {
-            onControllerStatusReceived(controllerStatusEvent.getStatus());
-        } else if (evt instanceof SettingChangedEvent && backend.getController() != null && backend.getController().getControllerStatus() != null) {
-            onControllerStatusReceived(backend.getController().getControllerStatus());
-            updateControls();
+        // TODO listen for ExpressionEngine Update event
+        if (evt instanceof ExpressionEngineEvent expressionEngineEvent) {
+            updateVariables(expressionEngineEvent.getVariables());
         }
     }
 
     /**
      * Enable and disable the different axes based on capabilities and configuration.
      */
-    private void updateControls() {
+    private void updateVariables(Bindings variables) {
         if (!backend.isConnected()) {
             return;
         }
-
-        Capabilities cap = backend.getController().getCapabilities();
-        Settings settings = backend.getSettings();
-
-        boolean enabled = backend.getControllerState() == ControllerState.IDLE;
+        // TODO
     }
 
     private void onControllerStatusReceived(ControllerStatus status) {
