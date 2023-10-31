@@ -117,6 +117,10 @@ public class ExpressionEngine implements UGSEventListener {
         return this.variables.get(key);
     }
 
+    public Bindings getVars() {
+        return this.variables;
+    }
+
     /**
      * This takes a single command line string and evaluates contained expressions
      * if any are present. If any variables contained within the expressions cannot

@@ -18,6 +18,8 @@
  */
 package com.willwinder.ugs.nbp.expressionengine.panels;
 
+import com.willwinder.universalgcodesender.model.ExpressionEngine;
+
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,19 +33,18 @@ public class VariablesTableModel extends AbstractTableModel {
 
     private static final int COLUMN_VARNAME = 0;
     private static final int COLUMN_VARVALUE = 1;
-    // public final List<WorkflowFile> fileList = new ArrayList<>();
 
-    // public void addRow(WorkflowFile workflowFile) {
-    //     fileList.add(workflowFile);
-    //     fireTableRowsInserted(fileList.size(), fileList.size());
-    // }
+    public List<String> varNames = new ArrayList<>();
+
+    ExpressionEngine engine = null;
+
+    public VariablesTableModel(ExpressionEngine engine) {
+        this.engine = engine;
+    }
 
     @Override
     public int getRowCount() {
-        // TODO count number of builtins
-        // return fileList.size();
-
-        return 5;
+        return this.engine.getVars().size();
     }
 
     @Override
@@ -58,10 +59,10 @@ public class VariablesTableModel extends AbstractTableModel {
         switch (columnIndex) {
             case COLUMN_VARNAME:
                 // return workflowFile.getFile();
-                return String.format("myVar%d", rowIndex);
+                return this.varNames.get(rowIndex);
 
             case COLUMN_VARVALUE:
-                return String.format("%d", rowIndex);
+                return this.engine.get(this.varNames.get(rowIndex));
         }
         return null;
     }
@@ -78,15 +79,12 @@ public class VariablesTableModel extends AbstractTableModel {
         return null;
     }
 
-    // TODO implement this if the entries are editable
     // @Override
     // public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
     //     if (columnIndex == COLUMN_TOOLNAME) {
-    //         get(rowIndex).setTool(new WorkflowTool(aValue.toString()));
-    //         fireTableCellUpdated(rowIndex, columnIndex);
+
     //     } else if (columnIndex == COLUMN_COMPLETED) {
-    //         get(rowIndex).setCompleted((Boolean) aValue);
-    //         fireTableCellUpdated(rowIndex, columnIndex);
+
     //     }
     // }
 
@@ -95,4 +93,13 @@ public class VariablesTableModel extends AbstractTableModel {
     // public boolean isCellEditable(int rowIndex, int columnIndex) {
     //     return columnIndex == 1 || columnIndex == 2;
     // }
+
+    public void update() {
+        // Bindings vars = this.engine.getVars();
+        varNames = new ArrayList(this.engine.getVars().keySet());
+        // for (int i = 0; i < keys.size(); i++) {
+        //     setValueAt(keys.get(i), i, COLUMN_VARNAME);
+        //     setValueAt(vars.get(keys.get(i)), i, COLUMN_VARVALUE);
+        // }
+    }
 }

@@ -56,7 +56,7 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
     private final RoundedPanel activeStatePanel = new RoundedPanel(COMMON_RADIUS);
     private final JLabel activeStateValueLabel = new JLabel(" ");
 
-    private VariablesTableModel variablesTableModel;
+    private VariablesTableModel model;
     private JTable variablesTable;
 
     private final BackendAPI backend;
@@ -67,6 +67,8 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
         this.backend = backend;
         if (this.backend != null) {
             this.backend.addUGSEventListener(this);
+
+            model = new VariablesTableModel(this.backend.getExpressionEngine());
         }
 
         // initFonts();
@@ -90,12 +92,6 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
         // sizer.addListener(fontManager::applyFonts);
     }
 
-    // private void initFonts() {
-    //     // fontManager.init();
-    //     // GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-    //     // fontManager.registerFonts(ge);
-    // }
-
     private void initComponents() {
         String debug = "";
         setLayout(new MigLayout(debug + "fillx, wrap 1, inset 5", "grow"));
@@ -110,12 +106,11 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
         activeStateValueLabel.setBorder(BorderFactory.createEmptyBorder());
         add(activeStatePanel, "growx");
 
-        variablesTableModel = new VariablesTableModel(); // TODO pass ExpressionEngine?
-        variablesTable = new JTable(variablesTableModel);
+        variablesTable = new JTable(model);
         JScrollPane sp = new JScrollPane(variablesTable);
         add(sp);
 
-        // TODO set default values to table
+        model.update();
     }
 
     @Override
@@ -138,20 +133,9 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
 
     @Override
     public void UGSEvent(UGSEvent evt) {
-        // TODO listen for ExpressionEngine Update event
-        if (evt instanceof ExpressionEngineEvent expressionEngineEvent) {
-            updateVariables(expressionEngineEvent.getVariables());
+        if (evt instanceof ExpressionEngineEvent) {
+            model.update();
         }
-    }
-
-    /**
-     * Enable and disable the different axes based on capabilities and configuration.
-     */
-    private void updateVariables(Bindings variables) {
-        if (!backend.isConnected()) {
-            return;
-        }
-        // TODO
     }
 
     private void onControllerStatusReceived(ControllerStatus status) {
