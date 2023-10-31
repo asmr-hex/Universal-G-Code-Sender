@@ -197,6 +197,9 @@ public class ExpressionEngineTest {
 
         engine.process("{myVar = 800}");
         Assert.assertEquals(800, expressionEngineEventListener.variables.get("myVar"));
+
+        engine.put("myNewVariable", 4.4);
+        Assert.assertEquals(4.4, expressionEngineEventListener.variables.get("myNewVariable"));
     }
 
     @Test

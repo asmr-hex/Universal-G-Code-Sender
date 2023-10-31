@@ -109,6 +109,8 @@ public class ExpressionEngine implements UGSEventListener {
         // TODO filter on builtins.
 
         this.variables.put(key, value);
+
+        this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
     }
 
     public Object get(String key) {
