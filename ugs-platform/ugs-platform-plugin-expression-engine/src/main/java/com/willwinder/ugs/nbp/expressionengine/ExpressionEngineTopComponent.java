@@ -22,7 +22,7 @@ import com.willwinder.ugs.nbp.lib.Mode;
 import com.willwinder.ugs.nbp.lib.services.LocalizingService;
 import com.willwinder.ugs.nbp.lib.lookup.CentralLookup;
 import com.willwinder.universalgcodesender.model.BackendAPI;
-import com.willwinder.ugs.nbp.dro.panels.MachineStatusPanel;
+import com.willwinder.ugs.nbp.expressionengine.panels.ExpressionEnginePanel;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -37,11 +37,11 @@ import javax.swing.*;
  * Top component which displays something.
  */
 @TopComponent.Description(
-        preferredID = "MachineStatusTopComponent",
+        preferredID = "ExpressionEngineTopComponent",
         persistenceType = TopComponent.PERSISTENCE_ALWAYS
 )
 @TopComponent.Registration(
-        mode = Mode.LEFT_TOP,
+        mode = Mode.LEFT_BOTTOM,
         openAtStartup = true
 )
 @ActionID(
@@ -53,20 +53,16 @@ import javax.swing.*;
 )
 @TopComponent.OpenActionRegistration(
         displayName = "<Not localized:MachineStatusTopComponent>",
-        preferredID = "MachineStatusTopComponent"
+        preferredID = "ExpressionEngineTopComponent"
 )
-public final class MachineStatusTopComponent extends TopComponent {
+public final class ExpressionEngineTopComponent extends TopComponent {
 
-    public MachineStatusTopComponent() {
+    public ExpressionEngineTopComponent() {
         BackendAPI backend = CentralLookup.getDefault().lookup(BackendAPI.class);
         setLayout(new BorderLayout());
-        JScrollPane scrollPane = new JScrollPane(new MachineStatusPanel(backend), JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        JScrollPane scrollPane = new JScrollPane(new ExpressionEnginePanel(backend), JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         add(scrollPane, BorderLayout.CENTER);
         setMinimumSize(new Dimension(100, 100));
-
-        // Add popup menu. Don't use SwingUtils.traverse, it interferes with the AxisPanels.
-        DROPopup popup = new DROPopup(backend);
-        scrollPane.setComponentPopupMenu(popup);
     }
 
     @Override
