@@ -52,7 +52,7 @@ import javax.swing.*;
         path = LocalizingService.LocationStatusWindowPath
 )
 @TopComponent.OpenActionRegistration(
-        displayName = "<Not localized:MachineStatusTopComponent>",
+        displayName = "<Not localized:ExpressionEngineTopComponent>",
         preferredID = "ExpressionEngineTopComponent"
 )
 public final class ExpressionEngineTopComponent extends TopComponent {
