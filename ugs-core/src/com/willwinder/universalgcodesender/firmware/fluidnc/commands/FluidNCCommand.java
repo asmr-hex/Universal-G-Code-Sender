@@ -54,16 +54,5 @@ public class FluidNCCommand extends GcodeCommand {
         }
 
         super.appendResponse(response);
-
-        if (response.startsWith("ok")) {
-            setDone(true);
-            setOk(true);
-        }
-
-        if (response.startsWith("error")) {
-            setDone(true);
-            setOk(false);
-            setError(true);
-        }
     }
 }
