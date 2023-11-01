@@ -102,6 +102,11 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>ugs-platform-plugin-expression-engine</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>ugs-platform-plugin-cloud-storage</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -1016,7 +1021,7 @@
 
          Configuration:
             The site-maven-plugin uses the <scm> settings from a parent POM.
-            
+
             settings.xml entry for github credentials
 
             <server>

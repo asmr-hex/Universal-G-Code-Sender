@@ -33,6 +33,8 @@ import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.Map;
 import java.util.HashMap;
@@ -72,6 +74,10 @@ public class ExpressionEngine implements UGSEventListener {
             getters.put(WorkX, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.X));
             getters.put(WorkY, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.Y));
             getters.put(WorkZ, (ControllerStatus status, Units units) -> status.getWorkCoord().getPositionIn(units).get(Axis.Z));
+        }
+
+        public static List<String> names() {
+            return new ArrayList(getters.keySet());
         }
 
         public static void init(Bindings bindings) {

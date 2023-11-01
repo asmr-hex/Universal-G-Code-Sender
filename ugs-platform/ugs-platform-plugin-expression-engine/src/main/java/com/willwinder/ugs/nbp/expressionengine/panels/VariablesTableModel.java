@@ -31,10 +31,15 @@ import java.util.List;
  */
 public class VariablesTableModel extends AbstractTableModel {
 
-    private static final int COLUMN_VARNAME = 0;
+    private static final int COLUMN_VARNAME  = 0;
     private static final int COLUMN_VARVALUE = 1;
+    private static final int COLUMN_LOCKED   = 2;
+    private static final int COLUMN_SAVED    = 3;
 
-    public List<String> varNames = new ArrayList<>();
+    public List<String>  builtinVarNames = new ArrayList<>();
+    public List<String>  userVarNames    = new ArrayList<>();
+    public List<Boolean> userVarLocked   = new ArrayList<>();
+    public List<Boolean> userVarSaved    = new ArrayList<>();
 
     ExpressionEngine engine = null;
 
@@ -49,20 +54,30 @@ public class VariablesTableModel extends AbstractTableModel {
 
     @Override
     public int getColumnCount() {
-        return 2;
+        return 4;
     }
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        // TODO access bindings
-        // WorkflowFile workflowFile = fileList.get(rowIndex);
-        switch (columnIndex) {
+        if (rowIndex < builtinVarNames.size()) {
+            switch (columnIndex) {
             case COLUMN_VARNAME:
-                // return workflowFile.getFile();
-                return this.varNames.get(rowIndex);
-
+                return this.builtinVarNames.get(rowIndex);
             case COLUMN_VARVALUE:
-                return this.engine.get(this.varNames.get(rowIndex));
+                return this.engine.get(this.builtinVarNames.get(rowIndex));
+            }
+            return null;
+        }
+
+        switch (columnIndex) {
+        case COLUMN_VARNAME:
+            return this.userVarNames.get(rowIndex);
+        case COLUMN_VARVALUE:
+            return this.engine.get(this.userVarNames.get(rowIndex));
+        case COLUMN_LOCKED:
+            // TODO should return a checkbox or something if not a builtin
+        case COLUMN_SAVED:
+            // TODO should return a checkbox or something if not a builtin
         }
         return null;
     }
@@ -72,9 +87,12 @@ public class VariablesTableModel extends AbstractTableModel {
         switch (columnIndex) {
         case COLUMN_VARNAME:
             return "Variable";
-
         case COLUMN_VARVALUE:
             return "Value";
+        case COLUMN_LOCKED:
+            return "Locked";
+        case COLUMN_SAVED:
+            return "Saved";
         }
         return null;
     }
@@ -88,18 +106,33 @@ public class VariablesTableModel extends AbstractTableModel {
     //     }
     // }
 
-    // TODO implement this if entries can be editable
-    // @Override
-    // public boolean isCellEditable(int rowIndex, int columnIndex) {
-    //     return columnIndex == 1 || columnIndex == 2;
-    // }
+    @Override
+    public boolean isCellEditable(int rowIndex, int columnIndex) {
+        if (rowIndex < builtinVarNames.size())
+            return false;
+
+        if (columnIndex < COLUMN_LOCKED && !userVarLocked.get(columnIndex))
+            return false;
+
+        return true;
+    }
 
     public void update() {
-        // Bindings vars = this.engine.getVars();
-        varNames = new ArrayList(this.engine.getVars().keySet());
-        // for (int i = 0; i < keys.size(); i++) {
-        //     setValueAt(keys.get(i), i, COLUMN_VARNAME);
-        //     setValueAt(vars.get(keys.get(i)), i, COLUMN_VARVALUE);
-        // }
+        List<String> varNames = new ArrayList(this.engine.getVars().keySet());
+        List<String> builtinNames = ExpressionEngine.BuiltinVariables.names();
+        List<String> newBuiltinVarNames = new ArrayList();
+        List<String> newUserVarNames = new ArrayList();
+
+        for (String n : varNames) {
+            if (builtinNames.contains(n)) {
+                newBuiltinVarNames.add(n);
+            }
+            else {
+                newUserVarNames.add(n);
+            }
+        }
+
+        builtinVarNames = newBuiltinVarNames;
+        userVarNames    = newUserVarNames;
     }
 }
