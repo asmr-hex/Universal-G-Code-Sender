@@ -59,7 +59,8 @@ public class VariablesTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        if (rowIndex < builtinVarNames.size()) {
+        int nBuiltins = builtinVarNames.size();
+        if (rowIndex < nBuiltins) {
             switch (columnIndex) {
             case COLUMN_VARNAME:
                 return this.builtinVarNames.get(rowIndex);
@@ -69,11 +70,14 @@ public class VariablesTableModel extends AbstractTableModel {
             return null;
         }
 
+        // this is a user var
+        String varName = this.userVarNames.get(rowIndex - nBuiltins);
+
         switch (columnIndex) {
         case COLUMN_VARNAME:
-            return this.userVarNames.get(rowIndex);
+            return varName;
         case COLUMN_VARVALUE:
-            return this.engine.get(this.userVarNames.get(rowIndex));
+            return this.engine.get(varName);
         case COLUMN_LOCKED:
             // TODO should return a checkbox or something if not a builtin
         case COLUMN_SAVED:
@@ -97,21 +101,41 @@ public class VariablesTableModel extends AbstractTableModel {
         return null;
     }
 
-    // @Override
-    // public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-    //     if (columnIndex == COLUMN_TOOLNAME) {
+    @Override
+    public void setValueAt(Object aValue, int row, int col) {
+        int nBuiltins = builtinVarNames.size();
+        if (row < nBuiltins)
+            return;
 
-    //     } else if (columnIndex == COLUMN_COMPLETED) {
+        int oldRow = row;
+        row = nBuiltins - row;
 
-    //     }
-    // }
+        switch (col) {
+        case COLUMN_VARNAME:
+            System.out.println();
+            System.out.println("UPDATING VARIABLE NAME");
+            String varName = aValue.toString();
+            String oldVarName = userVarNames.get(row);
+            this.engine.put(varName, this.engine.get(oldVarName));
+            System.out.println("ABOUT TO REMOVE");
+            this.engine.remove(oldVarName);
+            System.out.println("DONE");
+            System.out.println();
+        case COLUMN_VARVALUE:
+            this.engine.put(userVarNames.get(row), aValue);
+        }
+        fireTableCellUpdated(oldRow, col);
+    }
 
     @Override
-    public boolean isCellEditable(int rowIndex, int columnIndex) {
-        if (rowIndex < builtinVarNames.size())
+    public boolean isCellEditable(int row, int col) {
+        int nBuiltins = builtinVarNames.size();
+        if (row < nBuiltins)
             return false;
 
-        if (columnIndex < COLUMN_LOCKED && !userVarLocked.get(columnIndex))
+        row = nBuiltins - row;
+
+        if (col < COLUMN_LOCKED && userVarLocked.get(row))
             return false;
 
         return true;
@@ -122,6 +146,8 @@ public class VariablesTableModel extends AbstractTableModel {
         List<String> builtinNames = ExpressionEngine.BuiltinVariables.names();
         List<String> newBuiltinVarNames = new ArrayList();
         List<String> newUserVarNames = new ArrayList();
+        List<Boolean> newUserVarLocked = new ArrayList();
+        List<Boolean> newUserVarSaved = new ArrayList();
 
         for (String n : varNames) {
             if (builtinNames.contains(n)) {
@@ -129,10 +155,17 @@ public class VariablesTableModel extends AbstractTableModel {
             }
             else {
                 newUserVarNames.add(n);
+                newUserVarLocked.add(false);
+                newUserVarSaved.add(false);
             }
         }
 
         builtinVarNames = newBuiltinVarNames;
         userVarNames    = newUserVarNames;
+        userVarLocked   = newUserVarLocked;
+        userVarSaved    = newUserVarSaved;
+
+        // TODO (coco|2023.11.2) smartly diff?
+        fireTableDataChanged();
     }
 }

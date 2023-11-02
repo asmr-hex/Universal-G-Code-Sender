@@ -65,8 +65,19 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
         setLayout(new MigLayout(debug + "fillx, wrap 1, inset 5", "grow"));
 
         variablesTable = new JTable(model);
+        // TODO  set customRenderer to visually differentiate builtins vs user defined
+        // see https://stackoverflow.com/a/16946656
+        // and https://docs.oracle.com/javase/tutorial/uiswing/components/table.html#editrender
+
         JScrollPane sp = new JScrollPane(variablesTable);
         add(sp);
+
+        // TODO add add/remove buttons
+        JButton addButton = new JButton("Add");
+        addButton.setBounds(50,100,95,30);
+        addButton.addActionListener(e -> this.backend.getExpressionEngine().put("newVar", ""));
+
+        add(addButton, "south");
 
         model.update();
     }

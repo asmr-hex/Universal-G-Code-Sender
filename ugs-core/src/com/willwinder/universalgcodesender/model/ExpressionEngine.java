@@ -111,7 +111,7 @@ public class ExpressionEngine implements UGSEventListener {
         return this.engine.eval(expression).toString();
     }
 
-    public void put(String key, Object value) throws Exception {
+    public void put(String key, Object value) {
         // TODO filter on builtins.
 
         this.variables.put(key, value);
@@ -121,6 +121,12 @@ public class ExpressionEngine implements UGSEventListener {
 
     public Object get(String key) {
         return this.variables.get(key);
+    }
+
+    public void remove(String key) {
+        this.variables.remove(key);
+
+        this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
     }
 
     public Bindings getVars() {
