@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,6 +52,7 @@ public class ExpressionEngine implements UGSEventListener {
     public Pattern pattern = Pattern.compile("\\{[^}]+\\}");
 
     private Bindings variables = null;
+    private Set<String> saved = new HashSet<>();
     private IController controller = null;
     private Settings settings = null;
     private ScriptEngineManager mgr = new ScriptEngineManager();
@@ -108,11 +111,14 @@ public class ExpressionEngine implements UGSEventListener {
     }
 
     public String eval(String expression) throws Exception {
+        // TODO filter on builtins and saves.
+        check(expression);
+
         return this.engine.eval(expression).toString();
     }
 
     public void put(String key, Object value) {
-        // TODO filter on builtins.
+        // TODO filter on builtins and saves.
 
         this.variables.put(key, value);
 
@@ -124,9 +130,34 @@ public class ExpressionEngine implements UGSEventListener {
     }
 
     public void remove(String key) {
+        // TODO filter on builtins and saves.
+
         this.variables.remove(key);
 
         this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
+    }
+
+    public void rename(String oldName, String newName) {
+        // TODO filter on builtins and saves.
+
+        this.variables.put(newName, this.variables.get(oldName));
+        this.variables.remove(oldName);
+
+        this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
+    }
+
+    public void save(String var, Boolean shouldSave) {
+        if (shouldSave && !isSaved(var)) {
+            this.saved.add(var);
+        }
+
+        if (!shouldSave && isSaved(var)) {
+            this.saved.remove(var);
+        }
+    }
+
+    public Boolean isSaved(String var) {
+        return this.saved.contains(var);
     }
 
     public Bindings getVars() {
@@ -152,7 +183,7 @@ public class ExpressionEngine implements UGSEventListener {
             String match = matcher.group();
             String expression = match.substring(1, match.length() - 1);
 
-            // TODO ensure that expression isn't mutating internal variables
+            check(expression);
 
             // evaluate the expression in the JavaScript engine.
             String evaluated = eval(expression);
@@ -175,6 +206,10 @@ public class ExpressionEngine implements UGSEventListener {
         return result.toString().trim();
     }
 
+    private void check(String expression) throws Exception {
+        // TODO check that expression doesn't mutate builtin or saved variables
+    }
+
     @Override
     public void UGSEvent(UGSEvent evt) {
         if (evt instanceof ControllerStatusEvent controllerStatusEvent) {
@@ -183,5 +218,4 @@ public class ExpressionEngine implements UGSEventListener {
             this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
         }
     }
-
 }

@@ -21,10 +21,12 @@ package com.willwinder.ugs.nbp.expressionengine.panels;
 import com.willwinder.universalgcodesender.listeners.UGSEventListener;
 import com.willwinder.universalgcodesender.model.*;
 import com.willwinder.universalgcodesender.model.events.ExpressionEngineEvent;
+import com.willwinder.universalgcodesender.uielements.panels.ButtonGridPanel;
 import com.willwinder.universalgcodesender.uielements.helpers.SteppedSizeManager;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.util.*;
 import java.util.logging.Logger;
@@ -50,34 +52,47 @@ public class ExpressionEnginePanel extends JPanel implements UGSEventListener {
         }
 
         initComponents();
-        initSizer();
+        // initSizer();
     }
 
-    private void initSizer() {
-        SteppedSizeManager sizer = new SteppedSizeManager(this,
-                new Dimension(160, 330),
-                new Dimension(240, 420),
-                new Dimension(310, 420));
-    }
+    // private void initSizer() {
+    //     SteppedSizeManager sizer = new SteppedSizeManager(this,
+    //             new Dimension(160, 330),
+    //             new Dimension(240, 420),
+    //             new Dimension(310, 420));
+    // }
 
     private void initComponents() {
         String debug = "";
-        setLayout(new MigLayout(debug + "fillx, wrap 1, inset 5", "grow"));
+        setLayout(new MigLayout(debug + "fillx, filly, wrap 1, inset 5", "grow"));
 
-        variablesTable = new JTable(model);
-        // TODO  set customRenderer to visually differentiate builtins vs user defined
-        // see https://stackoverflow.com/a/16946656
-        // and https://docs.oracle.com/javase/tutorial/uiswing/components/table.html#editrender
+        variablesTable = new JTable(model)
+            {
+                public Component prepareRenderer(TableCellRenderer renderer, int row, int col)
+                    {
+                        if (col > VariablesTableModel.COLUMN_VARVALUE && row < ExpressionEngine.BuiltinVariables.names().size()) {
+                            // don't allow checkboxes on builtins
+                            JLabel c = new JLabel();
+                            return c;
+                        }
+                        return super.prepareRenderer(renderer, row, col);
+                    }
+            };
 
         JScrollPane sp = new JScrollPane(variablesTable);
         add(sp);
 
-        // TODO add add/remove buttons
-        JButton addButton = new JButton("Add");
-        addButton.setBounds(50,100,95,30);
-        addButton.addActionListener(e -> this.backend.getExpressionEngine().put("newVar", ""));
+        // add add/remove buttons
+        ButtonGridPanel buttonPanel = new ButtonGridPanel();
 
-        add(addButton, "south");
+        JButton addButton = new JButton("Add");
+        addButton.addActionListener(e -> this.backend.getExpressionEngine().put("unnamed", ""));
+        JButton removeButton = new JButton("Remove");
+        removeButton.addActionListener(e -> model.removeRow(variablesTable.getSelectedRow()));
+
+        buttonPanel.add(addButton);
+        buttonPanel.add(removeButton);
+        add(buttonPanel, "south");
 
         model.update();
     }

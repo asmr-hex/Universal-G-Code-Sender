@@ -31,14 +31,12 @@ import java.util.List;
  */
 public class VariablesTableModel extends AbstractTableModel {
 
-    private static final int COLUMN_VARNAME  = 0;
-    private static final int COLUMN_VARVALUE = 1;
-    private static final int COLUMN_LOCKED   = 2;
-    private static final int COLUMN_SAVED    = 3;
+    public static final int COLUMN_VARNAME  = 0;
+    public static final int COLUMN_VARVALUE = 1;
+    public static final int COLUMN_SAVED    = 2;
 
     public List<String>  builtinVarNames = new ArrayList<>();
     public List<String>  userVarNames    = new ArrayList<>();
-    public List<Boolean> userVarLocked   = new ArrayList<>();
     public List<Boolean> userVarSaved    = new ArrayList<>();
 
     ExpressionEngine engine = null;
@@ -54,7 +52,7 @@ public class VariablesTableModel extends AbstractTableModel {
 
     @Override
     public int getColumnCount() {
-        return 4;
+        return 3;
     }
 
     @Override
@@ -78,10 +76,8 @@ public class VariablesTableModel extends AbstractTableModel {
             return varName;
         case COLUMN_VARVALUE:
             return this.engine.get(varName);
-        case COLUMN_LOCKED:
-            // TODO should return a checkbox or something if not a builtin
         case COLUMN_SAVED:
-            // TODO should return a checkbox or something if not a builtin
+            return userVarSaved.get(rowIndex-nBuiltins);
         }
         return null;
     }
@@ -93,12 +89,23 @@ public class VariablesTableModel extends AbstractTableModel {
             return "Variable";
         case COLUMN_VARVALUE:
             return "Value";
-        case COLUMN_LOCKED:
-            return "Locked";
         case COLUMN_SAVED:
-            return "Saved";
+            return "Save";
         }
         return null;
+    }
+
+    @Override
+    public Class<?> getColumnClass(int columnIndex) {
+        switch (columnIndex) {
+        case COLUMN_VARNAME:
+            return String.class;
+        case COLUMN_VARVALUE:
+            return Object.class;
+        case COLUMN_SAVED:
+            return Boolean.class;
+        }
+        return Object.class;
     }
 
     @Override
@@ -108,23 +115,32 @@ public class VariablesTableModel extends AbstractTableModel {
             return;
 
         int oldRow = row;
-        row = nBuiltins - row;
+        row = row - nBuiltins;
 
         switch (col) {
         case COLUMN_VARNAME:
-            System.out.println();
-            System.out.println("UPDATING VARIABLE NAME");
-            String varName = aValue.toString();
+            String newVarName = aValue.toString();
             String oldVarName = userVarNames.get(row);
-            this.engine.put(varName, this.engine.get(oldVarName));
-            System.out.println("ABOUT TO REMOVE");
-            this.engine.remove(oldVarName);
-            System.out.println("DONE");
-            System.out.println();
+            this.engine.rename(oldVarName, newVarName);
+            break;
         case COLUMN_VARVALUE:
             this.engine.put(userVarNames.get(row), aValue);
+            break;
+        case COLUMN_SAVED:
+            this.engine.save(userVarNames.get(row), (Boolean)aValue);
+            userVarSaved.set(row, (Boolean)aValue);
+            break;
         }
         fireTableCellUpdated(oldRow, col);
+    }
+
+    public void removeRow(int row) {
+        int nBuiltins = builtinVarNames.size();
+        if (row < nBuiltins || userVarSaved.get(row-nBuiltins))
+            return;
+
+        this.engine.remove(userVarNames.get(row-nBuiltins));
+        fireTableRowsDeleted(row, row);
     }
 
     @Override
@@ -133,9 +149,9 @@ public class VariablesTableModel extends AbstractTableModel {
         if (row < nBuiltins)
             return false;
 
-        row = nBuiltins - row;
+        row = row - nBuiltins;
 
-        if (col < COLUMN_LOCKED && userVarLocked.get(row))
+        if (col < COLUMN_SAVED && userVarSaved.get(row))
             return false;
 
         return true;
@@ -146,7 +162,6 @@ public class VariablesTableModel extends AbstractTableModel {
         List<String> builtinNames = ExpressionEngine.BuiltinVariables.names();
         List<String> newBuiltinVarNames = new ArrayList();
         List<String> newUserVarNames = new ArrayList();
-        List<Boolean> newUserVarLocked = new ArrayList();
         List<Boolean> newUserVarSaved = new ArrayList();
 
         for (String n : varNames) {
@@ -155,14 +170,12 @@ public class VariablesTableModel extends AbstractTableModel {
             }
             else {
                 newUserVarNames.add(n);
-                newUserVarLocked.add(false);
-                newUserVarSaved.add(false);
+                newUserVarSaved.add(this.engine.isSaved(n));
             }
         }
 
         builtinVarNames = newBuiltinVarNames;
         userVarNames    = newUserVarNames;
-        userVarLocked   = newUserVarLocked;
         userVarSaved    = newUserVarSaved;
 
         // TODO (coco|2023.11.2) smartly diff?
