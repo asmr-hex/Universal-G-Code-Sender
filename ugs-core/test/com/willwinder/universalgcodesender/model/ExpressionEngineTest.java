@@ -64,7 +64,8 @@ public class ExpressionEngineTest {
 
     @Test
     public void testPut() throws Exception {
-        ExpressionEngine engine = new ExpressionEngine(dispatcher);
+        GUIBackend backend = new GUIBackend(dispatcher);
+        ExpressionEngine engine = backend.getExpressionEngine();
 
         engine.put("myVar1", "3.14");
         engine.put("myVar2", "2.71");
@@ -77,7 +78,8 @@ public class ExpressionEngineTest {
 
     @Test
     public void testEval() throws Exception {
-        ExpressionEngine engine = new ExpressionEngine(dispatcher);
+        GUIBackend backend = new GUIBackend(dispatcher);
+        ExpressionEngine engine = backend.getExpressionEngine();
 
         engine.eval("toolOffset = 66.6 / 3");
         engine.eval("PROBE_Z = toolOffset + 3");
@@ -88,7 +90,8 @@ public class ExpressionEngineTest {
 
     @Test
     public void testEvalAfterPut() throws Exception {
-        ExpressionEngine engine = new ExpressionEngine(dispatcher);
+        GUIBackend backend = new GUIBackend(dispatcher);
+        ExpressionEngine engine = backend.getExpressionEngine();
 
         engine.put("MeasuredHeight", 55.3);
         engine.eval("toolOffset = 4.7 + MeasuredHeight");
@@ -99,7 +102,9 @@ public class ExpressionEngineTest {
 
     @Test
     public void testExpressionPatternMatcher() {
-        ExpressionEngine engine = new ExpressionEngine(dispatcher);
+        GUIBackend backend = new GUIBackend(dispatcher);
+        ExpressionEngine engine = backend.getExpressionEngine();
+
         Matcher matcher;
 
         matcher = engine.pattern.matcher("{an expression}");
@@ -128,9 +133,9 @@ public class ExpressionEngineTest {
                                      new Position(1, 2, 33, UnitUtils.Units.MM),
                                      new Position(7, 8, 9, UnitUtils.Units.MM)));
 
-        ExpressionEngine engine = new ExpressionEngine(dispatcher);
-        dispatcher.addListener(engine);
-        engine.connect(controller, settings);
+        GUIBackend backend = new GUIBackend(dispatcher);
+        backend.applySettings(settings);
+        ExpressionEngine engine = backend.getExpressionEngine();
 
         Assert.assertEquals("", engine.get("machine_x"));
         Assert.assertEquals("", engine.get("machine_y"));
@@ -161,9 +166,9 @@ public class ExpressionEngineTest {
                                      new Position(1, 2, 33, UnitUtils.Units.MM),
                                      new Position(7, 8, 9, UnitUtils.Units.MM)));
 
-        ExpressionEngine engine = new ExpressionEngine(dispatcher);
-        dispatcher.addListener(engine);
-        engine.connect(controller, settings);
+        GUIBackend backend = new GUIBackend(dispatcher);
+        backend.applySettings(settings);
+        ExpressionEngine engine = backend.getExpressionEngine();
 
         dispatcher.addListener(expressionEngineEventListener);
 
@@ -212,9 +217,9 @@ public class ExpressionEngineTest {
                                      new Position(1, 2, 33, UnitUtils.Units.MM),
                                      new Position(7, 8, 9, UnitUtils.Units.MM)));
 
-        ExpressionEngine engine = new ExpressionEngine(dispatcher);
-        dispatcher.addListener(engine);
-        engine.connect(controller, settings);
+        GUIBackend backend = new GUIBackend(dispatcher);
+        backend.applySettings(settings);
+        ExpressionEngine engine = backend.getExpressionEngine();
 
         // update engine builtins from ControllerStatusEvent
         dispatcher.sendUGSEvent(new ControllerStatusEvent(controller.getControllerStatus(), controller.getControllerStatus()));

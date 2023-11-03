@@ -100,7 +100,7 @@ public class GUIBackend implements BackendAPI {
     public GUIBackend(UGSEventDispatcher eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
 
-        expressionEngine = new ExpressionEngine(this.eventDispatcher);
+        expressionEngine = new ExpressionEngine(this, this.eventDispatcher);
         this.addUGSEventListener(expressionEngine);
     }
 
@@ -190,8 +190,6 @@ public class GUIBackend implements BackendAPI {
         controller.getFirmwareSettings().addListener(eventDispatcher);
 
         openCommConnection(port, baudRate);
-
-        expressionEngine.connect(controller, settings);
     }
 
     protected IController fetchControllerFromFirmware(String firmware) throws Exception {
@@ -226,6 +224,7 @@ public class GUIBackend implements BackendAPI {
         logger.log(Level.INFO, "Applying settings.");
         this.settings = settings;
         this.settings.setSettingChangeListener(eventDispatcher);
+        this.expressionEngine.load();
         if (this.controller != null) {
             applySettingsToController(this.settings, this.controller);
         }

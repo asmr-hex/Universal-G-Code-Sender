@@ -23,10 +23,12 @@ import com.willwinder.universalgcodesender.listeners.ControllerStatus;
 import com.willwinder.universalgcodesender.listeners.UGSEventListener;
 import com.willwinder.universalgcodesender.model.UnitUtils.Units;
 import com.willwinder.universalgcodesender.model.UGSEvent;
+import com.willwinder.universalgcodesender.model.BackendAPI;
 import com.willwinder.universalgcodesender.model.events.ControllerStatusEvent;
 import com.willwinder.universalgcodesender.model.events.ExpressionEngineEvent;
 import com.willwinder.universalgcodesender.model.UGSEventDispatcher;
 import com.willwinder.universalgcodesender.utils.Settings;
+import com.willwinder.universalgcodesender.utils.SettingsFactory;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -53,11 +55,10 @@ public class ExpressionEngine implements UGSEventListener {
 
     private Bindings variables = null;
     private Set<String> saved = new HashSet<>();
-    private IController controller = null;
-    private Settings settings = null;
     private ScriptEngineManager mgr = new ScriptEngineManager();
     private ScriptEngine engine = null;
 
+    private BackendAPI backend = null;
     private UGSEventDispatcher dispatcher = null;
 
     public class BuiltinVariables {
@@ -97,17 +98,24 @@ public class ExpressionEngine implements UGSEventListener {
     }
 
 
-    public ExpressionEngine(UGSEventDispatcher dispatcher) {
-        // TODO: maybe ingest UGS settings to see if we have persisted any variables
+    public ExpressionEngine(BackendAPI backend, UGSEventDispatcher dispatcher) {
         this.engine = mgr.getEngineByName("JavaScript");
         this.variables = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        this.backend = backend;
         this.dispatcher = dispatcher;
         BuiltinVariables.init(this.variables);
+
+        this.backend.addUGSEventListener(this);
     }
 
-    public void connect(IController controller, Settings settings) {
-        this.controller = controller;
-        this.settings = settings;
+    public void load() {
+        Settings settings = this.backend.getSettings();
+        if (settings == null) return;
+
+        for (Map.Entry<String, Object> entry : settings.getSavedVariables().entrySet()) {
+            this.variables.put(entry.getKey(), entry.getValue());
+            saved.add(entry.getKey());
+        }
     }
 
     public String eval(String expression) throws Exception {
@@ -149,10 +157,14 @@ public class ExpressionEngine implements UGSEventListener {
     public void save(String var, Boolean shouldSave) {
         if (shouldSave && !isSaved(var)) {
             this.saved.add(var);
+            this.backend.getSettings().addSavedVariable(var, this.variables.get(var));
+            SettingsFactory.saveSettings(this.backend.getSettings());
         }
 
         if (!shouldSave && isSaved(var)) {
             this.saved.remove(var);
+            this.backend.getSettings().removeSavedVariable(var);
+            SettingsFactory.saveSettings(this.backend.getSettings());
         }
     }
 
@@ -214,7 +226,7 @@ public class ExpressionEngine implements UGSEventListener {
     public void UGSEvent(UGSEvent evt) {
         if (evt instanceof ControllerStatusEvent controllerStatusEvent) {
             // when the controller status has changed, update builtins, dispatch.
-            BuiltinVariables.update(controllerStatusEvent.getStatus(), this.settings.getPreferredUnits(), this.variables);
+            BuiltinVariables.update(controllerStatusEvent.getStatus(), this.backend.getSettings().getPreferredUnits(), this.variables);
             this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
         }
     }

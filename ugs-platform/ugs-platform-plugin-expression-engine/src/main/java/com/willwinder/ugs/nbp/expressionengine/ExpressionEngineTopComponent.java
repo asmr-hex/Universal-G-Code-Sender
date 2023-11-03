@@ -59,6 +59,7 @@ public final class ExpressionEngineTopComponent extends TopComponent {
 
     public ExpressionEngineTopComponent() {
         BackendAPI backend = CentralLookup.getDefault().lookup(BackendAPI.class);
+
         setLayout(new BorderLayout());
         JScrollPane scrollPane = new JScrollPane(new ExpressionEnginePanel(backend), JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         add(scrollPane, BorderLayout.CENTER);

@@ -39,7 +39,7 @@ public class VariablesTableModel extends AbstractTableModel {
     public List<String>  userVarNames    = new ArrayList<>();
     public List<Boolean> userVarSaved    = new ArrayList<>();
 
-    ExpressionEngine engine = null;
+    private ExpressionEngine engine = null;
 
     public VariablesTableModel(ExpressionEngine engine) {
         this.engine = engine;
