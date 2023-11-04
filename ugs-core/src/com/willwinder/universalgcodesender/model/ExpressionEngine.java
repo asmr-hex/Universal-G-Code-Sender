@@ -52,6 +52,7 @@ import java.util.regex.Pattern;
  */
 public class ExpressionEngine implements UGSEventListener {
     public Pattern pattern = Pattern.compile("\\{[^}]+\\}");
+    public Pattern assignmentPattern = Pattern.compile("\\s*(\\w+)\\s*=\\s*\\w+\\s*");
 
     private Bindings variables = null;
     private Set<String> saved = new HashSet<>();
@@ -119,14 +120,14 @@ public class ExpressionEngine implements UGSEventListener {
     }
 
     public String eval(String expression) throws Exception {
-        // TODO filter on builtins and saves.
         check(expression);
 
         return this.engine.eval(expression).toString();
     }
 
     public void put(String key, Object value) {
-        // TODO filter on builtins and saves.
+        if (saved.contains(key) || BuiltinVariables.names().contains(key))
+            return;
 
         this.variables.put(key, value);
 
@@ -138,7 +139,8 @@ public class ExpressionEngine implements UGSEventListener {
     }
 
     public void remove(String key) {
-        // TODO filter on builtins and saves.
+        if (saved.contains(key) || BuiltinVariables.names().contains(key))
+            return;
 
         this.variables.remove(key);
 
@@ -146,7 +148,8 @@ public class ExpressionEngine implements UGSEventListener {
     }
 
     public void rename(String oldName, String newName) {
-        // TODO filter on builtins and saves.
+        if (saved.contains(oldName) || BuiltinVariables.names().contains(oldName))
+            return;
 
         this.variables.put(newName, this.variables.get(oldName));
         this.variables.remove(oldName);
@@ -200,7 +203,8 @@ public class ExpressionEngine implements UGSEventListener {
             // evaluate the expression in the JavaScript engine.
             String evaluated = eval(expression);
 
-            // TODO if evaluated is null....raise
+            if (evaluated.trim().equals("null"))
+                throw new Exception(String.format("Expression evaluates to null: %s", expression));
 
             // if the entire command is just an expression, put it in comments so it
             // isn't evaluated by the controller.
@@ -220,6 +224,12 @@ public class ExpressionEngine implements UGSEventListener {
 
     private void check(String expression) throws Exception {
         // TODO check that expression doesn't mutate builtin or saved variables
+        Matcher matcher = assignmentPattern.matcher(expression);
+        while (matcher.find()) {
+            String varNameAssigned = matcher.group(1);
+            if (saved.contains(varNameAssigned) || BuiltinVariables.names().contains(varNameAssigned))
+                throw new Exception(String.format("Attempting to illegally mutate builtin or saved expression variable: %s = ...", varNameAssigned));
+        }
     }
 
     @Override

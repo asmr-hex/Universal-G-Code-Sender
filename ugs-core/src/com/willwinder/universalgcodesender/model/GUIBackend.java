@@ -101,7 +101,6 @@ public class GUIBackend implements BackendAPI {
         this.eventDispatcher = eventDispatcher;
 
         expressionEngine = new ExpressionEngine(this, this.eventDispatcher);
-        this.addUGSEventListener(expressionEngine);
     }
 
     /////////////
