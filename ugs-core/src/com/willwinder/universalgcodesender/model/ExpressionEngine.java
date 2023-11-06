@@ -109,6 +109,7 @@ public class ExpressionEngine implements UGSEventListener {
         this.backend.addUGSEventListener(this);
     }
 
+    // TODO test
     public void load() {
         Settings settings = this.backend.getSettings();
         if (settings == null) return;
@@ -125,6 +126,7 @@ public class ExpressionEngine implements UGSEventListener {
         return this.engine.eval(expression).toString();
     }
 
+    // TODO test bad path
     public void put(String key, Object value) {
         if (saved.contains(key) || BuiltinVariables.names().contains(key))
             return;
@@ -138,6 +140,8 @@ public class ExpressionEngine implements UGSEventListener {
         return this.variables.get(key);
     }
 
+    // TODO test happy path?
+    // TODO test bad path
     public void remove(String key) {
         if (saved.contains(key) || BuiltinVariables.names().contains(key))
             return;
@@ -147,6 +151,8 @@ public class ExpressionEngine implements UGSEventListener {
         this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
     }
 
+    // TODO test happy path?
+    // TODO test bad path
     public void rename(String oldName, String newName) {
         if (saved.contains(oldName) || BuiltinVariables.names().contains(oldName))
             return;
@@ -157,6 +163,8 @@ public class ExpressionEngine implements UGSEventListener {
         this.dispatcher.sendUGSEvent(new ExpressionEngineEvent(this.variables));
     }
 
+    // TODO test happy path?
+    // TODO test bad path
     public void save(String var, Boolean shouldSave) {
         if (shouldSave && !isSaved(var)) {
             this.saved.add(var);
@@ -188,6 +196,7 @@ public class ExpressionEngine implements UGSEventListener {
      * @returns modified command line string with all expressions evaluated
      * @throws Exception if variables cannot be resolved, or if expression is invalid
      */
+    // TODO test bad paths
     public String process(String commandText) throws Exception {
         StringBuilder result = new StringBuilder();
         Matcher matcher = pattern.matcher(commandText);
@@ -222,8 +231,9 @@ public class ExpressionEngine implements UGSEventListener {
         return result.toString().trim();
     }
 
-    private void check(String expression) throws Exception {
-        // TODO check that expression doesn't mutate builtin or saved variables
+    // TODO test
+    public void check(String expression) throws Exception {
+        // check that expression doesn't mutate builtin or saved variables
         Matcher matcher = assignmentPattern.matcher(expression);
         while (matcher.find()) {
             String varNameAssigned = matcher.group(1);

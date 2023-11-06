@@ -89,6 +89,33 @@ public class ExpressionEngineTest {
     }
 
     @Test
+    public void testCheck() throws Exception {
+        GUIBackend backend = new GUIBackend(dispatcher);
+        ExpressionEngine engine = backend.getExpressionEngine();
+
+        engine.check("3 + 4");
+        engine.check("3 + machine_x");
+        engine.check("myUnsavedVar = 789");
+    }
+
+    @Test
+    public void testCheck_ThrowsExceptionWhenAssigningBuiltin() throws Exception {
+        GUIBackend backend = new GUIBackend(dispatcher);
+        ExpressionEngine engine = backend.getExpressionEngine();
+        boolean exceptionThrown = false;
+
+        try {
+            engine.check("machine_x = 789");
+        } catch (Exception e) {
+            exceptionThrown = true;
+            Assert.assertEquals("Attempting to illegally mutate builtin or saved expression variable: machine_x = ...", e.getMessage());
+        }
+
+        Assert.assertTrue(exceptionThrown);
+    }
+
+
+    @Test
     public void testEvalAfterPut() throws Exception {
         GUIBackend backend = new GUIBackend(dispatcher);
         ExpressionEngine engine = backend.getExpressionEngine();
