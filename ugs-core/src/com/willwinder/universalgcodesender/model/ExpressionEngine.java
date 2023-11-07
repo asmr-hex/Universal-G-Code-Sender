@@ -109,7 +109,6 @@ public class ExpressionEngine implements UGSEventListener {
         this.backend.addUGSEventListener(this);
     }
 
-    // TODO test
     public void load() {
         Settings settings = this.backend.getSettings();
         if (settings == null) return;
@@ -123,7 +122,12 @@ public class ExpressionEngine implements UGSEventListener {
     public String eval(String expression) throws Exception {
         check(expression);
 
-        return this.engine.eval(expression).toString();
+        Object result = this.engine.eval(expression);
+
+        if (result == null)
+            throw new Exception(String.format("Expression evaluates to null: %s", expression));
+
+        return result.toString();
     }
 
     // TODO test bad path
@@ -196,7 +200,6 @@ public class ExpressionEngine implements UGSEventListener {
      * @returns modified command line string with all expressions evaluated
      * @throws Exception if variables cannot be resolved, or if expression is invalid
      */
-    // TODO test bad paths
     public String process(String commandText) throws Exception {
         StringBuilder result = new StringBuilder();
         Matcher matcher = pattern.matcher(commandText);
@@ -211,9 +214,6 @@ public class ExpressionEngine implements UGSEventListener {
 
             // evaluate the expression in the JavaScript engine.
             String evaluated = eval(expression);
-
-            if (evaluated.trim().equals("null"))
-                throw new Exception(String.format("Expression evaluates to null: %s", expression));
 
             // if the entire command is just an expression, put it in comments so it
             // isn't evaluated by the controller.
@@ -231,7 +231,6 @@ public class ExpressionEngine implements UGSEventListener {
         return result.toString().trim();
     }
 
-    // TODO test
     public void check(String expression) throws Exception {
         // check that expression doesn't mutate builtin or saved variables
         Matcher matcher = assignmentPattern.matcher(expression);

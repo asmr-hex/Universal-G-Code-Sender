@@ -63,6 +63,23 @@ public class ExpressionEngineTest {
     public void teardown() {}
 
     @Test
+    public void testLoad() throws Exception {
+        Settings settings = new Settings();
+        settings.addSavedVariable("mySavedVar", 543);
+        GUIBackend backend = new GUIBackend(dispatcher);
+        ExpressionEngine engine = backend.getExpressionEngine();
+
+        Assert.assertEquals(ExpressionEngine.BuiltinVariables.names().size(), engine.getVars().size());
+
+        // this calls load.
+        backend.applySettings(settings);
+
+        Assert.assertEquals(ExpressionEngine.BuiltinVariables.names().size() + 1, engine.getVars().size());
+        Assert.assertEquals(543, engine.get("mySavedVar"));
+        Assert.assertTrue(engine.isSaved("mySavedVar"));
+    }
+
+    @Test
     public void testPut() throws Exception {
         GUIBackend backend = new GUIBackend(dispatcher);
         ExpressionEngine engine = backend.getExpressionEngine();
@@ -116,7 +133,7 @@ public class ExpressionEngineTest {
 
 
     @Test
-    public void testEvalAfterPut() throws Exception {
+    public void testEval_AfterPut() throws Exception {
         GUIBackend backend = new GUIBackend(dispatcher);
         ExpressionEngine engine = backend.getExpressionEngine();
 
@@ -125,6 +142,24 @@ public class ExpressionEngineTest {
 
         Assert.assertEquals(55.3, engine.get("MeasuredHeight"));
         Assert.assertEquals(60.0, engine.get("toolOffset"));
+    }
+
+    @Test
+    public void testEval_ThrowsExceptionWhenExpressionEvaluatesToNull() throws Exception {
+        GUIBackend backend = new GUIBackend(dispatcher);
+        ExpressionEngine engine = backend.getExpressionEngine();
+
+        String result;
+        boolean exceptionThrown = false;
+
+        try {
+            result = engine.eval("null");
+        } catch (Exception e) {
+            exceptionThrown = true;
+            Assert.assertEquals("Expression evaluates to null: null", e.getMessage());
+        }
+
+        Assert.assertTrue(exceptionThrown);
     }
 
     @Test
@@ -269,7 +304,6 @@ public class ExpressionEngineTest {
         Assert.assertEquals("(myVar = machine_z -> 33.0)", result);
         Assert.assertEquals(33.0, engine.get("myVar"));
 
-
         result = engine.process("G0 {myVar = 234}");
         Assert.assertEquals("G0 234", result);
         Assert.assertEquals(234.0, engine.get("myVar"));
@@ -283,5 +317,77 @@ public class ExpressionEngineTest {
 
         result = engine.process("G00");
         Assert.assertEquals("G00", result);
+    }
+
+    @Test
+    public void testProcess_ThrowsExceptionWhenProtectedVariableMutated() throws Exception {
+        Settings settings = new Settings();
+        AbstractController controller = mock(AbstractController.class);
+        when(controller.getControllerStatus())
+            .thenReturn(
+                new ControllerStatus(ControllerState.IDLE,
+                                     new Position(1, 2, 33, UnitUtils.Units.MM),
+                                     new Position(7, 8, 9, UnitUtils.Units.MM)));
+
+        GUIBackend backend = new GUIBackend(dispatcher);
+        backend.applySettings(settings);
+        ExpressionEngine engine = backend.getExpressionEngine();
+
+        // update engine builtins from ControllerStatusEvent
+        dispatcher.sendUGSEvent(new ControllerStatusEvent(controller.getControllerStatus(), controller.getControllerStatus()));
+
+        String result;
+        boolean exceptionThrown = false;
+
+        try {
+            result = engine.process("{machine_z = 273}");
+        } catch (Exception e) {
+            exceptionThrown = true;
+            Assert.assertEquals("Attempting to illegally mutate builtin or saved expression variable: machine_z = ...", e.getMessage());
+        }
+
+        Assert.assertTrue(exceptionThrown);
+
+        engine.put("myVar", 123);
+        engine.save("myVar", true);
+
+        try {
+            result = engine.process("{myVar = 273}");
+        } catch (Exception e) {
+            exceptionThrown = true;
+            Assert.assertEquals("Attempting to illegally mutate builtin or saved expression variable: myVar = ...", e.getMessage());
+        }
+
+        Assert.assertTrue(exceptionThrown);
+    }
+
+    @Test
+    public void testProcess_ThrowsExceptionWhenExpressionEvaluatesToNull() throws Exception {
+        Settings settings = new Settings();
+        AbstractController controller = mock(AbstractController.class);
+        when(controller.getControllerStatus())
+            .thenReturn(
+                new ControllerStatus(ControllerState.IDLE,
+                                     new Position(1, 2, 33, UnitUtils.Units.MM),
+                                     new Position(7, 8, 9, UnitUtils.Units.MM)));
+
+        GUIBackend backend = new GUIBackend(dispatcher);
+        backend.applySettings(settings);
+        ExpressionEngine engine = backend.getExpressionEngine();
+
+        // update engine builtins from ControllerStatusEvent
+        dispatcher.sendUGSEvent(new ControllerStatusEvent(controller.getControllerStatus(), controller.getControllerStatus()));
+
+        String result;
+        boolean exceptionThrown = false;
+
+        try {
+            result = engine.process("G0 {null}");
+        } catch (Exception e) {
+            exceptionThrown = true;
+            Assert.assertEquals("Expression evaluates to null: null", e.getMessage());
+        }
+
+        Assert.assertTrue(exceptionThrown);
     }
 }
