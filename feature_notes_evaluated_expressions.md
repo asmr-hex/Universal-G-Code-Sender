@@ -39,6 +39,9 @@ run ugs platform
 mvn nbm:run-platform -pl ugs-platform/application
 ```
 
+NOTE: the jogging bug seems unrelated to the expression stuff. it basically happens when i plug in a joystick and activate the joystick. it seems like something
+gets overwhelmed with the amount of messages being sent. also the joystick analog left seems stuck and is likely spamming  UGS leading to something getting
+overwhelmed. additionally, i A/B tested it and it happens on a the master branch also (with no expression engine stuff).
 
 ## references
 * [Feature Request](https://github.com/winder/Universal-G-Code-Sender/issues/1426)
