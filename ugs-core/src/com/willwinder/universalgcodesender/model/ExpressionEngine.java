@@ -219,7 +219,7 @@ public class ExpressionEngine implements UGSEventListener {
             // if the entire command is just an expression, put it in comments so it
             // isn't evaluated by the controller.
             if (match.trim().equals(commandText.trim())) {
-                evaluated = String.format("(%s -> %s)", expression.trim(), evaluated);
+                evaluated = String.format("; %s -> %s", expression.trim(), evaluated);
             }
 
             matcher.appendReplacement(result, evaluated);

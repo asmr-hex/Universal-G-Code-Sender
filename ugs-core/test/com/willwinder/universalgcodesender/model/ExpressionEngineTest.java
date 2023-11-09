@@ -289,19 +289,19 @@ public class ExpressionEngineTest {
         String result;
 
         result = engine.process("{myVar = 543}");
-        Assert.assertEquals("(myVar = 543 -> 543)", result);
+        Assert.assertEquals("; myVar = 543 -> 543", result);
         Assert.assertEquals(543, engine.get("myVar"));
 
         result = engine.process("{   myVar = 543}");
-        Assert.assertEquals("(myVar = 543 -> 543)", result);
+        Assert.assertEquals("; myVar = 543 -> 543", result);
         Assert.assertEquals(543, engine.get("myVar"));
 
         result = engine.process("  {   myVar = 543}   ");
-        Assert.assertEquals("(myVar = 543 -> 543)", result);
+        Assert.assertEquals("; myVar = 543 -> 543", result);
         Assert.assertEquals(543, engine.get("myVar"));
 
         result = engine.process("{myVar = machine_z}");
-        Assert.assertEquals("(myVar = machine_z -> 33.0)", result);
+        Assert.assertEquals("; myVar = machine_z -> 33.0", result);
         Assert.assertEquals(33.0, engine.get("myVar"));
 
         result = engine.process("G0 {myVar = 234}");
