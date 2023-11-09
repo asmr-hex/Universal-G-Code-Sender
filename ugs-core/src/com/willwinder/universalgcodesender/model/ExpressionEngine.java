@@ -119,6 +119,7 @@ public class ExpressionEngine implements UGSEventListener {
         }
     }
 
+    // TODO test for undefined variables!
     public String eval(String expression) throws Exception {
         check(expression);
 
