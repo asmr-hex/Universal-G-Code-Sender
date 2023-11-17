@@ -25,6 +25,7 @@ import com.willwinder.universalgcodesender.types.GcodeCommand;
 import com.willwinder.universalgcodesender.utils.IGcodeStreamReader;
 
 import java.io.IOException;
+import java.util.function.Function;
 
 /**
  * An interface for describing a communicator, responsible for handling gcode command
@@ -168,6 +169,13 @@ public interface ICommunicator extends IConnectionListener {
      * @param listener a listener to add
      */
     void addListener(ICommunicatorListener listener);
+
+    /**
+     * Adds processors to be applied to command strings immediately before sending to controller.
+     *
+     * @param A function that takes a command string and returns a modified command string
+     */
+    void addPreFlightProcessor(Function<String, String> fn);
 
     /**
      * Connects to the hardware

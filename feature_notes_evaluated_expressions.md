@@ -8,11 +8,38 @@
 * find where each line is sent off to the controller. add an "in-flight" processor to check if this outgoing line has been flagged as a javascript expression, if so, evaluate it and send out the evaluated line.
 
 ## TODOS
-* [ ] finish implementing checks and filtering in ExpressionEngine
-* [ ] Add support for persisting some expression variables within application settings so things are lost when program restarts
-* [ ] implement a plugin for visualizing/editing expression variables
+* [x] finish implementing checks and filtering in ExpressionEngine
+* [x] Add support for persisting some expression variables within application settings so things are lost when program restarts
+* [x] implement a plugin for visualizing/editing expression variables
 * [x] implement a custom event class for ExpressionEngineEvents
 * [x] subscribe ExpressionEngine to events for changing machine/work locations. (make ExpressionEngine implement UGSEventListener)
+* [ ] process expressions on their way out from processed gcode files
+
+## impl details
+dont call ExpressionEngine.process() in GUIBackend.sendGcodeCommand (L257), but call it from
+within controller.createCommand(String commandString). this might allow us to only call process
+in one place. actually no, we need the calll site to be as close to sending the commnd as possible to ensure
+the previous command has been sent and is done.
+### buffered communicator expression processing [YES]
+* we want to guarantee that an expression is evaluated once the previous command has completed on the controller.
+  * can we subscribe to command finished? are commands sent when the previous have completed?
+#### how to inject Expression Engine into Controller.Communicator
+~~* in GUIBackend.fetchControllerFromFirmware (L194) we get a controller~~
+~~* this gets it from FirmwareUtils.getControllerFor();~~
+call controller.getCommunicator
+add setExpressionengine to ICommunicator/AbstractCommunicator
+or add a method for adding string processors to Abstract Communicator
+### OR add in-flight expression evaluation right at the Connection level. [NO]
+Connection.sendStringToComm is the last place before the actually commands are sent out
+to the device. the only issue is that it is an interface method. there is an AbstractConnection
+class which doesn't implement the `sendStringToComm` method, but all the actual implementations
+*do* implement it....so we would have to maybe do a base implementation and then call super in
+actual (non-abstract) implementations.
+### actually just do itr in buffered communicator [YES]
+why? because all communicators implemented extend buffered communicator and we only have to
+insert a call in one plce. also, all calls to sendCommandImmediately also eventually call
+buffered communicator.streamCommands
+
 
 ## commands
 run ExpressionEngine tests

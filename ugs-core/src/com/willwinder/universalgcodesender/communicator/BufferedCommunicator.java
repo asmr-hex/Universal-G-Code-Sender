@@ -28,6 +28,7 @@ import com.willwinder.universalgcodesender.utils.IGcodeStreamReader;
 
 import java.io.IOException;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -62,12 +63,12 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
         this.commandBuffer = cb;
         this.activeCommandList = asl;
     }
-    
+
     @Override
     public void setSingleStepMode(boolean enable) {
         this.singleStepModeEnabled = enable;
     }
-    
+
     @Override
     public boolean getSingleStepMode() {
         return this.singleStepModeEnabled;
@@ -111,7 +112,7 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
 
         return sb.toString();
     }
-    
+
     @Override
     public boolean areActiveCommands() {
         return numActiveCommands() > 0;
@@ -136,11 +137,11 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
         }
         return true;
     }
-    
+
     /**
      * THIS COMMAND CAN ONLY BE CALLED FROM streamCommands UNLESS
      * THE nextCommand OBJECT IS SYNCHRONIZED.
-     * 
+     *
      * Returns the next command with the following priority:
      * 1. nextCommand object if set.
      * 2. Front of the commandBuffer collection.
@@ -167,7 +168,7 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
         }
         return null;
     }
-   
+
     /**
      * Streams anything in the command buffer to the comm port.
      * Synchronized to prevent commands from sending out of order.
@@ -179,7 +180,7 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
             logger.log(Level.FINE, "There are no more commands to stream");
             return;
         }
-        
+
         // Send command if:
         // There is room in the buffer.
         // AND we are NOT paused
@@ -195,7 +196,12 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
 
             GcodeCommand command = this.getNextCommand();
             String commandString = command.getCommandString();
-            
+
+            // run last minute processors over command string
+            for (Function<String,String> fn : this.preFlightProcessors) {
+                commandString = fn.apply(commandString);
+            }
+
             this.activeCommandList.add(command);
             this.sentBufferSize += (commandString.length() + 1);
 
@@ -210,12 +216,12 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
             }
         }
     }
-    
+
     @Override
     public void pauseSend() {
         this.sendPaused = true;
     }
-    
+
     @Override
     public void resumeSend() {
         this.sendPaused = false;
@@ -226,7 +232,7 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
     public boolean isPaused() {
         return sendPaused;
     }
-    
+
     @Override
     public void cancelSend() {
         this.nextCommand = null;
@@ -243,7 +249,7 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
      */
     abstract protected void sendingCommand(String command);
 
-    /** 
+    /**
      * Processes message from the controller. This should only be called from the
      * connection object.
      * @param response the raw response line text
@@ -297,7 +303,7 @@ public abstract class BufferedCommunicator extends AbstractCommunicator {
     public void disconnect() throws Exception {
         this.cancelSend();
         super.disconnect();
-        
+
         this.sendPaused = false;
         this.commandBuffer.clear();
         this.activeCommandList.clear();

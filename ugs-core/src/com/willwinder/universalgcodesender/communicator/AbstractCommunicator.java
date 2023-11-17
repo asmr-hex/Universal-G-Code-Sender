@@ -26,6 +26,9 @@ import com.willwinder.universalgcodesender.connection.ConnectionFactory;
 import com.willwinder.universalgcodesender.i18n.Localization;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -39,6 +42,8 @@ public abstract class AbstractCommunicator implements ICommunicator {
     private final ICommunicatorEventDispatcher eventDispatcher;
 
     protected Connection connection;
+
+    protected List<Function<String, String>> preFlightProcessors = new ArrayList<>();
 
     protected AbstractCommunicator() {
         this(new AsyncCommunicatorEventDispatcher());
@@ -103,6 +108,11 @@ public abstract class AbstractCommunicator implements ICommunicator {
     }
 
     /* ****************** */
+
+    @Override
+    public void addPreFlightProcessor(Function<String, String> fn) {
+        this.preFlightProcessors.add(fn);
+    }
 
     @Override
     public void removeListener(ICommunicatorListener scl) {

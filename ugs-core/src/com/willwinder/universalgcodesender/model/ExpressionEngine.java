@@ -35,6 +35,8 @@ import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -61,6 +63,8 @@ public class ExpressionEngine implements UGSEventListener {
 
     private BackendAPI backend = null;
     private UGSEventDispatcher dispatcher = null;
+
+    private static final Logger logger = Logger.getLogger(ExpressionEngine.class.getName());
 
     public class BuiltinVariables {
         public static final String MachineX = "machine_x";
@@ -199,9 +203,8 @@ public class ExpressionEngine implements UGSEventListener {
      * exception. This should halt the running program.
      *
      * @returns modified command line string with all expressions evaluated
-     * @throws Exception if variables cannot be resolved, or if expression is invalid
      */
-    public String process(String commandText) throws Exception {
+    public String process(String commandText) {
         StringBuilder result = new StringBuilder();
         Matcher matcher = pattern.matcher(commandText);
         boolean expressionsFound = false;
@@ -210,16 +213,22 @@ public class ExpressionEngine implements UGSEventListener {
 
             String match = matcher.group();
             String expression = match.substring(1, match.length() - 1);
+            String evaluated = commandText;
 
-            check(expression);
+            try {
+                check(expression);
 
-            // evaluate the expression in the JavaScript engine.
-            String evaluated = eval(expression);
+                // evaluate the expression in the JavaScript engine.
+                evaluated = eval(expression);
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Unable to process command: " + commandText, e);
+                // TODO (coco|2023.11.17) do something more than just return nothing.
+                return "";
+            }
 
-            // if the entire command is just an expression, put it in comments so it
-            // isn't evaluated by the controller.
+            // if the entire command is just an expression, send nothing.
             if (match.trim().equals(commandText.trim())) {
-                evaluated = String.format("; %s -> %s", expression.trim(), evaluated);
+                evaluated = "";
             }
 
             matcher.appendReplacement(result, evaluated);

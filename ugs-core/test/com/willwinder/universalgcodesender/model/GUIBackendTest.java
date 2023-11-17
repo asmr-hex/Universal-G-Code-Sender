@@ -20,6 +20,7 @@ package com.willwinder.universalgcodesender.model;
 
 import com.willwinder.universalgcodesender.AbstractController;
 import com.willwinder.universalgcodesender.IController;
+import com.willwinder.universalgcodesender.communicator.ICommunicator;
 import com.willwinder.universalgcodesender.firmware.IFirmwareSettings;
 import com.willwinder.universalgcodesender.listeners.ControllerState;
 import com.willwinder.universalgcodesender.listeners.ControllerStatus;
@@ -88,9 +89,11 @@ public class GUIBackendTest {
         UGSEventDispatcher eventDispatcher = new UGSEventDispatcher();
         instance = spy(new GUIBackend(eventDispatcher));
         IFirmwareSettings firmwareSettings = mock(IFirmwareSettings.class);
+        ICommunicator communicator = mock(ICommunicator.class);
         controller = mock(AbstractController.class);
         doReturn(controller).when(instance).fetchControllerFromFirmware(any());
         doReturn(firmwareSettings).when(controller).getFirmwareSettings();
+        doReturn(communicator).when(controller).getCommunicator();
 
         // Add a event listener that stores events in the argument captor
         UGSEventListener ugsEventListener = mock(UGSEventListener.class);

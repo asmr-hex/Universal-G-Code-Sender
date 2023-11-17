@@ -131,6 +131,39 @@ public class ExpressionEngineTest {
         Assert.assertTrue(exceptionThrown);
     }
 
+        @Test
+    public void testCheck_ThrowsExceptionWhenProtectedVariableMutated() throws Exception {
+        Settings settings = new Settings();
+        AbstractController controller = mock(AbstractController.class);
+        when(controller.getControllerStatus())
+            .thenReturn(
+                new ControllerStatus(ControllerState.IDLE,
+                                     new Position(1, 2, 33, UnitUtils.Units.MM),
+                                     new Position(7, 8, 9, UnitUtils.Units.MM)));
+
+        GUIBackend backend = new GUIBackend(dispatcher);
+        backend.applySettings(settings);
+        ExpressionEngine engine = backend.getExpressionEngine();
+
+        // update engine builtins from ControllerStatusEvent
+        dispatcher.sendUGSEvent(new ControllerStatusEvent(controller.getControllerStatus(), controller.getControllerStatus()));
+
+        String result;
+        boolean exceptionThrown = false;
+
+        engine.put("myVar", 123);
+        engine.save("myVar", true);
+
+        try {
+            engine.check("{myVar = 273}");
+        } catch (Exception e) {
+            exceptionThrown = true;
+            Assert.assertEquals("Attempting to illegally mutate builtin or saved expression variable: myVar = ...", e.getMessage());
+        }
+
+        Assert.assertTrue(exceptionThrown);
+    }
+
 
     @Test
     public void testEval_AfterPut() throws Exception {
@@ -289,19 +322,19 @@ public class ExpressionEngineTest {
         String result;
 
         result = engine.process("{myVar = 543}");
-        Assert.assertEquals("; myVar = 543 -> 543", result);
+        Assert.assertEquals("", result);
         Assert.assertEquals(543, engine.get("myVar"));
 
         result = engine.process("{   myVar = 543}");
-        Assert.assertEquals("; myVar = 543 -> 543", result);
+        Assert.assertEquals("", result);
         Assert.assertEquals(543, engine.get("myVar"));
 
         result = engine.process("  {   myVar = 543}   ");
-        Assert.assertEquals("; myVar = 543 -> 543", result);
+        Assert.assertEquals("", result);
         Assert.assertEquals(543, engine.get("myVar"));
 
         result = engine.process("{myVar = machine_z}");
-        Assert.assertEquals("; myVar = machine_z -> 33.0", result);
+        Assert.assertEquals("", result);
         Assert.assertEquals(33.0, engine.get("myVar"));
 
         result = engine.process("G0 {myVar = 234}");
@@ -317,77 +350,5 @@ public class ExpressionEngineTest {
 
         result = engine.process("G00");
         Assert.assertEquals("G00", result);
-    }
-
-    @Test
-    public void testProcess_ThrowsExceptionWhenProtectedVariableMutated() throws Exception {
-        Settings settings = new Settings();
-        AbstractController controller = mock(AbstractController.class);
-        when(controller.getControllerStatus())
-            .thenReturn(
-                new ControllerStatus(ControllerState.IDLE,
-                                     new Position(1, 2, 33, UnitUtils.Units.MM),
-                                     new Position(7, 8, 9, UnitUtils.Units.MM)));
-
-        GUIBackend backend = new GUIBackend(dispatcher);
-        backend.applySettings(settings);
-        ExpressionEngine engine = backend.getExpressionEngine();
-
-        // update engine builtins from ControllerStatusEvent
-        dispatcher.sendUGSEvent(new ControllerStatusEvent(controller.getControllerStatus(), controller.getControllerStatus()));
-
-        String result;
-        boolean exceptionThrown = false;
-
-        try {
-            result = engine.process("{machine_z = 273}");
-        } catch (Exception e) {
-            exceptionThrown = true;
-            Assert.assertEquals("Attempting to illegally mutate builtin or saved expression variable: machine_z = ...", e.getMessage());
-        }
-
-        Assert.assertTrue(exceptionThrown);
-
-        engine.put("myVar", 123);
-        engine.save("myVar", true);
-
-        try {
-            result = engine.process("{myVar = 273}");
-        } catch (Exception e) {
-            exceptionThrown = true;
-            Assert.assertEquals("Attempting to illegally mutate builtin or saved expression variable: myVar = ...", e.getMessage());
-        }
-
-        Assert.assertTrue(exceptionThrown);
-    }
-
-    @Test
-    public void testProcess_ThrowsExceptionWhenExpressionEvaluatesToNull() throws Exception {
-        Settings settings = new Settings();
-        AbstractController controller = mock(AbstractController.class);
-        when(controller.getControllerStatus())
-            .thenReturn(
-                new ControllerStatus(ControllerState.IDLE,
-                                     new Position(1, 2, 33, UnitUtils.Units.MM),
-                                     new Position(7, 8, 9, UnitUtils.Units.MM)));
-
-        GUIBackend backend = new GUIBackend(dispatcher);
-        backend.applySettings(settings);
-        ExpressionEngine engine = backend.getExpressionEngine();
-
-        // update engine builtins from ControllerStatusEvent
-        dispatcher.sendUGSEvent(new ControllerStatusEvent(controller.getControllerStatus(), controller.getControllerStatus()));
-
-        String result;
-        boolean exceptionThrown = false;
-
-        try {
-            result = engine.process("G0 {null}");
-        } catch (Exception e) {
-            exceptionThrown = true;
-            Assert.assertEquals("Expression evaluates to null: null", e.getMessage());
-        }
-
-        Assert.assertTrue(exceptionThrown);
     }
 }
